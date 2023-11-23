@@ -6,7 +6,7 @@ import fileUpload from "express-fileupload";
 
 import firebase, { Firebase } from "../firebase";
 
-import publicRouter from "../routes/public";
+import systemAuthRouter from "../routes/systemAuth.routes";
 
 class Server {
   app: Express;
@@ -41,7 +41,7 @@ class Server {
       next();
     });
 
-    this.app.use("/api", publicRouter);
+    this.app.use("/api/admin", systemAuthRouter);
   }
 
   execute() {

@@ -7,6 +7,8 @@
     "dev": "nodemon src/index.ts",
     "build": "typescript --watch",
     "start": "node build/src/index.js",
+    "insert:seed": "ts-node src/index.ts --insert-seed",
+    "delete:seed": "ts-node src/index.ts --delete-seed",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
@@ -21,8 +23,10 @@
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "express-fileupload": "^1.4.2",
+    "express-validator": "^7.0.1",
     "firebase": "^10.6.0",
     "jsonwebtoken": "^9.0.2",
+    "moment": "^2.29.4",
     "nodemailer": "^6.9.7",
     "socket.io": "^4.7.2"
   },
@@ -32,6 +36,7 @@
     "@types/express": "^4.17.21",
     "@types/express-fileupload": "^1.4.4",
     "@types/jsonwebtoken": "^9.0.5",
+    "@types/nodemailer": "^6.4.14",
     "nodemon": "^3.0.1",
     "ts-node": "^10.9.1",
     "typescript": "^5.3.2"

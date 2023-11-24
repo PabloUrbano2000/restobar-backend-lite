@@ -14,7 +14,7 @@ type OrderType = "COMER EN LOCAL" | "PARA LLEVAR";
 type PaymentMethod = "AL CONTADO" | "VISA" | "MASTERCARD";
 type OrderChannel = "APP" | "PRESENCIAL";
 
-type Order = {
+export type Order = {
   id: string;
   order_number: string;
   order_type: OrderType;
@@ -36,7 +36,7 @@ type Order = {
 
 type Delivered = 0 | 1;
 
-type OrderDetail = {
+export type OrderDetail = {
   id: string;
   order: Order;
   product: Product;
@@ -46,4 +46,4 @@ type OrderDetail = {
 };
 
 export const ORDER_COLLECTION = "orders";
-export const ORDER_DETAILS_COLLECTION = "orders_details";
+export const ORDER_DETAILS_COLLECTION = "order_details";

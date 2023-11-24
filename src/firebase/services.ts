@@ -27,7 +27,7 @@ import firebaseConfig from "./config";
 type Filter = {
   field: string;
   filter: WhereFilterOp;
-  value: string | number | boolean | Date;
+  value: string | number | boolean | Date | DocumentReference;
 };
 
 class Firebase {
@@ -42,7 +42,7 @@ class Firebase {
     this.db = getFirestore();
   }
 
-  // añadir un nuevo documento
+  // inserta un nuevo documento en una colección
   async insertDocument(collectionRef: string, body = {}) {
     const result = await addDoc(collection(this.db, collectionRef), {
       ...body,
@@ -61,6 +61,7 @@ class Firebase {
     return documents || [];
   }
 
+  // obtener objetos por referencia
   async getObjectsByReference(references: DocumentReference[] = []) {
     if (references.length > 0) {
       const refArray = references.map((ref) => getDoc(ref));
@@ -69,6 +70,8 @@ class Firebase {
       return snapshot;
     }
   }
+
+  // obtiene un objeto por referencia
   async getObjectByReference(reference: DocumentReference) {
     if (reference) {
       const ref = await getDoc(reference);
@@ -79,6 +82,7 @@ class Firebase {
     }
   }
 
+  // limpia los atributos con valor undefined (no aplica datos dentro de arreglos)
   cleanValuesDocument(data: any = {}, values: string[] = []) {
     const newData = { ...data };
     if (values.length > 0) {
@@ -89,10 +93,10 @@ class Firebase {
     return newData;
   }
 
+  // obtiene un documento por id
   async getDocumentById(collectionRef: string, id: string) {
     const docRef = doc(this.db, collectionRef, id);
     const snapshot: any = await getDoc(docRef);
-    console.log(snapshot);
     if (!snapshot) {
       return null;
     }
@@ -102,7 +106,7 @@ class Firebase {
     return document;
   }
 
-  // obtener un documento por filtro
+  // obtiene un documento por filtro
   async getOneDocument(collectionRef: string, filter: Filter[]) {
     const docRef = collection(this.db, collectionRef);
     const filters: QueryConstraint[] = [];
@@ -126,7 +130,7 @@ class Firebase {
     return documents[0];
   }
 
-  // obtener documentos por filtro
+  // obtiene documentos por filtro y limite
   async getDocumentsByFilter(
     collectionRef: string,
     filter: Filter[],
@@ -151,19 +155,26 @@ class Firebase {
     return documents;
   }
 
-  // actualizar documento
-  async updateDocument(collectionRef: string, id: string, body: any = {}) {
+  // instancia la referencia de un documento por id
+  instanceReferenceById(collection: string, id: string) {
+    return doc(this.db, collection, id);
+  }
+
+  // actualiza un documento por id
+  async updateDocumentById(collectionRef: string, id: string, body: any = {}) {
     const result = await setDoc(doc(this.db, collectionRef, id), {
       ...body,
     });
     return result;
   }
 
+  // elimina un documento por id
   async deleteDocumentById(collectionRef: string, id: string) {
     const result = await deleteDoc(doc(this.db, collectionRef, id));
     return result;
   }
 
+  // Elimina todos los documentos de una colección
   async deleteAllDocuments(collectionRef: string) {
     const docRef = collection(this.db, collectionRef);
     const newArray: Promise<any>[] = [];

@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 import Server from "./models/Server";
-import { executeData, deleteData } from "./data/seed";
+import { executeData, deleteData } from "./seed/functions";
 
 dotenv.config();
 

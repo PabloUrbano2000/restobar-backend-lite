@@ -1,17 +1,31 @@
 import config from "../config";
-import { Setting } from "../models/Setting";
 import { generateUTCToLimaDate } from "../helpers/generators";
-import { Status } from "../models/Generic";
-import { Module } from "../models/Module";
-import { Role } from "../models/Role";
-import { Gender } from "../models/Gender";
-import { Category } from "../models/Category";
-import { DocumentTypeDB } from "../models/DocumentType";
-import { Charge } from "../models/Charge";
-import { Reception } from "../models/Reception";
-import { SystemUser } from "../models/SystemUser";
-import { User } from "../models/User";
-import { Product } from "../models/Product";
+import { encryptPassword } from "../helpers/passwords";
+import {
+  Setting,
+  Module,
+  Role,
+  SystemUser,
+  Category,
+  Product,
+  Gender,
+  DocumentTypeDB,
+  User,
+  Reception,
+} from "../models/Entities";
+
+import {
+  CATEGORIES,
+  DOCUMENT_TYPE_DNI,
+  EMAIL_PABLO_SYS,
+  EMAIL_PABLO_USER,
+  EMAIL_POL_SYS,
+  EMAIL_POL_USER,
+  GENDER_MAN,
+  GENERIC_PASSWORD,
+  MODULES,
+  ROLES,
+} from "./constants";
 
 export const settingsData: Setting[] = [
   {
@@ -22,8 +36,8 @@ export const settingsData: Setting[] = [
     ruc: "",
     business_name: "Restobar admin S.A.C.",
     address: "Jirón Las Magnolias 500, Lima",
-    user_double_opt_in: config.DOUBLE_OPT_IN_USER as Status,
-    system_user_double_opt_in: config.DOUBLE_OPT_IN_SYS as Status,
+    user_double_opt_in: config.DOUBLE_OPT_IN_USER as 1 | 0,
+    system_user_double_opt_in: config.DOUBLE_OPT_IN_SYS as 1 | 0,
     created_date: generateUTCToLimaDate(),
     status: 1,
     user_creator: null,
@@ -33,24 +47,24 @@ export const settingsData: Setting[] = [
 ];
 
 export const modulesData: Module[] = [
-  { name: "EMPLOYEES", status: 1 },
+  { name: MODULES.RECEPTIONS, status: 1 },
   {
-    name: "SYSTEM_USERS",
+    name: MODULES.SYSTEM_USERS,
     status: 1,
   },
-  { name: "USERS", status: 1 },
+  { name: MODULES.USERS, status: 1 },
   {
-    name: "PRODUCTS",
+    name: MODULES.PRODUCTS,
     status: 1,
   },
   {
-    name: "ORDERS",
+    name: MODULES.ORDERS,
     status: 1,
   },
 ];
 export const rolesData: Role[] = [
   {
-    name: "SELLER",
+    name: ROLES.SELLER,
     alias: "Vendedor(a)",
     permissions: [],
     status: 1,
@@ -58,7 +72,7 @@ export const rolesData: Role[] = [
     created_date: generateUTCToLimaDate(),
   },
   {
-    name: "ADMIN",
+    name: ROLES.ADMIN,
     alias: "Administrador(a)",
     permissions: [],
     status: 1,
@@ -66,7 +80,7 @@ export const rolesData: Role[] = [
     created_date: generateUTCToLimaDate(),
   },
   {
-    name: "GLOBAL_ADMIN",
+    name: ROLES.GLOBAL_ADMIN,
     alias: "Super Administrador(a)",
     permissions: [],
     status: 1,
@@ -76,7 +90,7 @@ export const rolesData: Role[] = [
 ];
 export const gendersData: Gender[] = [
   {
-    name: "Hombre",
+    name: GENDER_MAN,
     status: 1,
   },
   {
@@ -95,35 +109,35 @@ export const gendersData: Gender[] = [
 
 export const categoriesData: Category[] = [
   {
-    name: "Bebidas",
+    name: CATEGORIES.BEBIDAS,
     description:
       "Categoría que enfoca a todo lo  que son bebidas como refrescos, vinos, cocteles, etc.",
     status: 1,
   },
   {
-    name: "Entradas",
+    name: CATEGORIES.ENTRADAS,
     description: "Categoría enfocada a los platos de entrada.",
     status: 1,
   },
   {
-    name: "A la carta",
+    name: CATEGORIES.A_LA_CARTA,
     description: "Categoría enfocada a los platos principales a la carta.",
     status: 1,
   },
   {
-    name: "Menú",
+    name: CATEGORIES.MENU,
     description:
       "Categoría enfocada a los platos que son el menú del día a día.",
     status: 1,
   },
   {
-    name: "Combos",
+    name: CATEGORIES.COMBOS,
     description:
       "Categoría enfocada a los platos que incluyen bebidas, plato fuerte, y postre (la selección de platos puede variar).",
     status: 1,
   },
   {
-    name: "Postres",
+    name: CATEGORIES.POSTRES,
     description: "Categoría enfocada a los postres.",
     status: 1,
   },
@@ -131,7 +145,7 @@ export const categoriesData: Category[] = [
 
 export const documentTypesData: DocumentTypeDB[] = [
   {
-    name: "DNI",
+    name: DOCUMENT_TYPE_DNI,
     operation: "IDENTITY",
     status: 1,
     code: "DNI",
@@ -194,45 +208,6 @@ export const documentTypesData: DocumentTypeDB[] = [
   },
 ];
 
-export const chargesData: Charge[] = [
-  {
-    name: "Mesero",
-    min_salary: 930.0,
-    max_salary: 2100.0,
-    description: "",
-    status: 1,
-    created_date: generateUTCToLimaDate(),
-    updated_date: generateUTCToLimaDate(),
-  },
-  {
-    name: "Recepcionista",
-    min_salary: 1500.0,
-    max_salary: 4000.0,
-    description: "",
-    status: 1,
-    created_date: generateUTCToLimaDate(),
-    updated_date: generateUTCToLimaDate(),
-  },
-  {
-    name: "Gerente",
-    min_salary: 4000.0,
-    max_salary: 10000.0,
-    description: "",
-    status: 1,
-    created_date: generateUTCToLimaDate(),
-    updated_date: generateUTCToLimaDate(),
-  },
-  {
-    name: "Jefe de cocina",
-    min_salary: 2500.0,
-    max_salary: 8000.0,
-    description: "",
-    status: 1,
-    created_date: generateUTCToLimaDate(),
-    updated_date: generateUTCToLimaDate(),
-  },
-];
-
 export const receptionData: Reception[] = [
   {
     code: "R000000",
@@ -276,12 +251,6 @@ export const receptionData: Reception[] = [
   },
 ];
 
-export const EMAIL_PABLO_SYS = "pablojamiro2008@gmail.com";
-export const EMAIL_PABLO_USER = "pablojamiro2008@hotmail.com";
-export const EMAIL_POL_SYS = "reyesm.pol@gmail.com";
-export const EMAIL_POL_USER = "wpol.reyes@gmail.com";
-const GENERIC_PASSWORD = "12345678";
-
 export const systemUsersData: SystemUser[] = [
   {
     email: EMAIL_PABLO_SYS,
@@ -291,9 +260,9 @@ export const systemUsersData: SystemUser[] = [
     photo: "",
     status: 1,
     verified: 1,
-    role: undefined,
-    user_creator: null,
-    account_suspension_day: undefined,
+    // role: undefined,
+    // user_creator: null,
+    // account_suspension_day: undefined,
     access_token: "",
     refresh_token: "",
     validation_token: "",
@@ -308,9 +277,9 @@ export const systemUsersData: SystemUser[] = [
     photo: "",
     status: 1,
     verified: 1,
-    role: undefined,
-    user_creator: null,
-    account_suspension_day: undefined,
+    // role: undefined,
+    // user_creator: null,
+    // account_suspension_day: undefined,
     access_token: "",
     refresh_token: "",
     validation_token: "",
@@ -324,11 +293,11 @@ export const usersData: User[] = [
     first_name: "Pablo Jamiro",
     last_name: "Urbano",
     second_last_name: "",
-    document_type: undefined,
+    // document_type: undefined,
     document_number: "",
     cellphone_number: "",
     address: "",
-    gender: undefined,
+    // gender: undefined,
     email: EMAIL_PABLO_USER,
     password: GENERIC_PASSWORD,
     verified: 1,
@@ -343,11 +312,11 @@ export const usersData: User[] = [
     first_name: "Pol Wilmer",
     last_name: "Reyes",
     second_last_name: "Mamani",
-    document_type: undefined,
+    // document_type: undefined,
     document_number: "",
     cellphone_number: "",
     address: "",
-    gender: undefined,
+    // gender: undefined,
     email: EMAIL_POL_USER,
     password: GENERIC_PASSWORD,
     verified: 1,
@@ -360,23 +329,56 @@ export const usersData: User[] = [
   },
 ];
 
-export const productsData: Product[] = [
+export const productsMenuData: Product[] = [
   {
-    name: "Arroz con mariscos",
+    name: "Salchipapa",
     available: 1,
     description: "",
-    category: undefined,
-    price: 50.0,
+    // category: undefined,
+    price: 30.0,
     status: 1,
     created_date: generateUTCToLimaDate(),
     updated_date: generateUTCToLimaDate(),
   },
   {
-    name: "Vino tinto 1l",
+    name: "Alitas BBQ",
     available: 1,
     description: "",
-    category: undefined,
-    price: 50.0,
+    // category: undefined,
+    price: 20.0,
+    status: 1,
+    created_date: generateUTCToLimaDate(),
+    updated_date: generateUTCToLimaDate(),
+  },
+];
+
+export const productsBeveragesData: Product[] = [
+  {
+    name: "Pisco Sour",
+    available: 1,
+    description: "",
+    // category: undefined,
+    price: 20.0,
+    status: 1,
+    created_date: generateUTCToLimaDate(),
+    updated_date: generateUTCToLimaDate(),
+  },
+  {
+    name: "Machu Picchu",
+    available: 1,
+    description: "",
+    // category: undefined,
+    price: 20.0,
+    status: 1,
+    created_date: generateUTCToLimaDate(),
+    updated_date: generateUTCToLimaDate(),
+  },
+  {
+    name: "Cerveza",
+    available: 1,
+    description: "",
+    // category: undefined,
+    price: 10.0,
     status: 1,
     created_date: generateUTCToLimaDate(),
     updated_date: generateUTCToLimaDate(),

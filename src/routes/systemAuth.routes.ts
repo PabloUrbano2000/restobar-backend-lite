@@ -2,11 +2,14 @@ import { Router } from "express";
 import { body } from "express-validator";
 import {
   login,
-  //   renewToken,
-  //   sentRecovery,
-  //   verifyToken,
-  //   changePassword,
+  // renewToken,
+  recoveryAccount,
+  verifyAccount,
+  verifyPassword,
+  recoveryPassword,
+  changePassword,
 } from "../controllers/systemAuth.controller";
+import { verifySysUserValidToken } from "../middlewares";
 
 const router = Router();
 
@@ -29,10 +32,65 @@ router.post(
 
 // router.post("/token/renew", renewToken);
 
-// router.post("/token/verify", verifyToken);
+router.post(
+  "/account/recovery",
+  [
+    body("email")
+      .notEmpty()
+      .withMessage("El correo electrónico es obligatorio")
+      .isEmail()
+      .withMessage("Correo electrónico con formato inválido")
+      .escape(),
+  ],
+  recoveryAccount
+);
 
-// router.post("/password/recovery", sentRecovery);
+router.post("/account/verify", [verifySysUserValidToken], verifyAccount);
 
-// router.post("/password/change", changePassword);
+// verificación del token del usuario de sistema
+router.post("/password/verify", [verifySysUserValidToken], verifyPassword);
+
+// enviar token para recuperar la cuenta
+router.post(
+  "/password/recovery",
+  [
+    body("email")
+      .notEmpty()
+      .withMessage("El correo electrónico es obligatorio")
+      .isEmail()
+      .withMessage("Correo electrónico con formato inválido")
+      .escape(),
+  ],
+  recoveryPassword
+);
+
+// guardar contraseña con el token generado
+router.post(
+  "/password/change",
+  [
+    verifySysUserValidToken,
+    body("new_password")
+      .notEmpty()
+      .withMessage("La nueva contraseña es obligatoria")
+      .isLength({ min: 8, max: 16 })
+      .withMessage("La nueva contraseña debe tener entre 8 a 16 caracteres")
+      .escape(),
+    body("confirm_password")
+      .notEmpty()
+      .withMessage("La confirmación de la contraseña es obligatoria")
+      .isLength({ min: 8, max: 16 })
+      .withMessage(
+        "La confirmación de contraseña debe tener entre 8 a 16 caracteres"
+      )
+      .escape()
+      .custom((data, { req }) => {
+        if (data && data !== req.body.new_password) {
+          throw Error("Las contraseñas deben ser idénticas");
+        }
+        return true;
+      }),
+  ],
+  changePassword
+);
 
 export default router;

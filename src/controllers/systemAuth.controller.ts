@@ -1,17 +1,20 @@
 import { Response, Request } from "express";
 import jwt from "jsonwebtoken";
 import config from "../config";
-import nodemailer from "nodemailer";
 import { RequestServer } from "../interfaces/Request";
 import { ErrorFormat } from "../interfaces/Error";
-import {
-  SYSTEM_USER_COLLECTION,
-  SystemUser,
-  comparePassword,
-} from "../models/SystemUser";
+import { SYSTEM_USER_COLLECTION, SystemUser } from "../models/SystemUser";
 
 import { validationResult } from "express-validator";
 import { generateUTCToLimaDate } from "../helpers/generators";
+import { comparePassword, encryptPassword } from "../helpers/passwords";
+import {
+  templateEmailSystemRecoveryAccount,
+  templateEmailSystemVerifyAccount,
+  templateEmailSystemRecoveryPassword,
+  templateEmailSystemChangePassword,
+  sendMail,
+} from "../emails";
 
 const login = async (request: Request, res: Response) => {
   const req = request as RequestServer;
@@ -40,9 +43,7 @@ const login = async (request: Request, res: Response) => {
       return res.status(401).json({
         status_code: 401,
         error_code: "USER_NOT_FOUND",
-        errors: [
-          "No se reconoce esa combinación de correo electrónico y contraseña",
-        ],
+        errors: ["Correo electrónico y/o contraseña incorrecta"],
       });
     }
 
@@ -59,7 +60,7 @@ const login = async (request: Request, res: Response) => {
       });
     }
 
-    if (typeof userFound.verified === "number" && userFound.verified === 0) {
+    if (userFound.verified === 0) {
       return res.status(401).json({
         status_code: 401,
         error_code: "USER_NOT_VERIFIED",
@@ -67,8 +68,8 @@ const login = async (request: Request, res: Response) => {
       });
     }
 
-    if (typeof userFound.status === "number" && userFound.status === 0) {
-      return res.status(400).json({
+    if (userFound.status === 0) {
+      return res.status(401).json({
         status_code: 401,
         error_code: "USER_NOT_ENABLED",
         errors: ["El usuario está deshabilitado"],
@@ -90,14 +91,14 @@ const login = async (request: Request, res: Response) => {
     const { id, ...rest } = userFound;
 
     // actualizamos el usuario con sus nuevas credenciales
-    await req.firebase.updateDocument(
+    await req.firebase.updateDocumentById(
       SYSTEM_USER_COLLECTION,
       userFound.id || "",
       {
         ...rest,
         access_token: token,
         refresh_token: refreshToken,
-        validation_token: null,
+        validation_token: "",
         updated_date: generateUTCToLimaDate(),
       }
     );
@@ -118,6 +119,7 @@ const login = async (request: Request, res: Response) => {
       }
     }
 
+    newUser.updated_date = new Date(newUser.created_date?.seconds * 1000);
     newUser.updated_date = new Date(newUser.updated_date?.seconds * 1000);
 
     const userAccessToken = newUser.access_token.toString();
@@ -140,9 +142,9 @@ const login = async (request: Request, res: Response) => {
       errors: errors,
     });
   } catch (error) {
-    console.log("login response - error", error);
+    console.log("system-user login response - error", error);
     return res
-      .status(400)
+      .status(500)
       .json({ status: 500, errors: ["Ocurrió un error desconocido"] });
   }
 };
@@ -215,186 +217,374 @@ const login = async (request: Request, res: Response) => {
 //   }
 // };
 
-// const sentRecovery = async (req: Request, res: Response) => {
-//   const { username = undefined } = req.body;
-//   try {
-//     if (!username) {
-//       return res
-//         .status(400)
-//         .json({ status: 400, message: "El Correo es obligatorio" });
-//     }
-//     const user = await User.findOne({
-//       username: { $in: username },
-//     });
-//     if (!user) {
-//       return res
-//         .status(400)
-//         .json({ status: 400, message: "Usuario no encontrado" });
-//     }
-//     const token = jwt.sign({ id: user._id }, config.RECOVERY_SECRET, {
-//       expiresIn: "15min",
-//     });
-//     const link = `${config.HOST_URL}/auth/restore/?token=${token}`;
+const recoveryAccount = async (request: Request, res: Response) => {
+  const req = request as RequestServer;
+  let errors: ErrorFormat[] = [];
+  const resultValidator = validationResult(req);
 
-//     await User.findByIdAndUpdate(
-//       user._id,
-//       {
-//         token: undefined,
-//         refreshToken: undefined,
-//         recoveryToken: token,
-//         updatedDate: generateUTCToLimaDate(),
-//       },
-//       {
-//         new: true,
-//       }
-//     );
+  if (!resultValidator.isEmpty()) {
+    errors = resultValidator.array().map((data) => data.msg);
 
-//     const mail = {
-//       from: `${config.SMTP_EMAIL}`,
-//       to: `${user.username}`,
-//       subject: "Recupera tu contraseña",
-//       html: `
-//       <p style="margin:0; font-size:14px;">Hola ${user.username},</p>
-//       <p style="margin:15px 0 0; font-size:13px;">Haz click <a style="" href="${link}">aquí</a> para restaurar tu contraseña.</p>
-//       <p style="margin:20px 0 0; font-size:13px;">Si no solicitaste cambiar tu contraseña haga caso omiso a este mensaje.</p>
-//       <p style="margin:20px 0 0;font-size: 13px;font-weight: 600;font-style:italic;">"Por favor, no responder. Este es un correo automático, por lo tanto, no será revisado."</p>
-//       <p style="margin-top: 40px; font-weight: 600;font-size: 13px;">${new Date().getFullYear()} @ LABBIO SRL.-<span style="font-weight:500;"> Equipo de soporte</span></p>`,
-//     };
-//     const rta: any = await sendMail(mail);
-//     return res.status(200).json({ status: 200, ...rta });
-//   } catch (error) {
-//     console.log(error);
-//     return res.status(400).json({ status: 400, message: "Ocurrió un error" });
-//   }
-// };
+    return res.status(400).json({
+      status_code: 400,
+      error_code: "INVALID_BODY_FIELDS",
+      errors,
+    });
+  }
+  try {
+    const { email = undefined } = request.body;
 
-// const verifyToken = async (req: Request, res: Response) => {
-//   const token = req.headers["x-access-token"]?.toString() || "";
-//   try {
-//     if (!token) {
-//       return res.status(400).json({
-//         status: 400,
-//         message: "Token inválido",
-//       });
-//     }
-//     const user: any = jwt.verify(token, config.RECOVERY_SECRET);
-//     const { id = undefined } = user || {};
-//     if (!id) {
-//       return res.status(400).json({
-//         status: 400,
-//         message: "Token inválido",
-//       });
-//     }
+    const userFound: SystemUser | null = await req.firebase.getOneDocument(
+      SYSTEM_USER_COLLECTION,
+      [{ field: "email", filter: "==", value: email }]
+    );
+    if (!userFound) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_NOT_FOUND",
+        errors: ["Correo electrónico no válido"],
+      });
+    }
 
-//     const userFound = await User.findOne({
-//       _id: { $in: id },
-//       recoveryToken: { $in: token },
-//     });
-//     if (!userFound) {
-//       return res.status(400).json({
-//         status: 400,
-//         message: "Token inválido",
-//       });
-//     }
-//     return res.status(200).json({
-//       status: 200,
-//     });
-//   } catch (error) {
-//     return res.status(400).json({
-//       status: 400,
-//       message: "Token inválido",
-//     });
-//   }
-// };
-// const changePassword = async (req: Request, res: Response) => {
-//   const token = req.headers["x-access-token"]?.toString() || "";
-//   try {
-//     const { newPassword = undefined, confirmPassword = undefined } = req.body;
-//     if (!token) {
-//       return res.status(401).json({
-//         status: 401,
-//         message: "Acción denegada",
-//       });
-//     }
-//     if (!newPassword) {
-//       return res.status(400).json({
-//         status: 400,
-//         message: "La nueva contraseña es obligatoria",
-//       });
-//     }
-//     if (newPassword !== confirmPassword) {
-//       return res.status(400).json({
-//         status: 400,
-//         message: "No coinciden las contraseñas",
-//       });
-//     }
+    if (userFound.verified == 1) {
+      return res.status(400).json({
+        status_code: 400,
+        error_code: "VERIFIED_USER_ACCOUNT",
+        errors: ["El usuario ya se encuentra verificado"],
+      });
+    }
 
-//     const user: any = jwt.verify(token, config.RECOVERY_SECRET);
-//     const { id = undefined } = user || {};
-//     if (!id) {
-//       return res.status(400).json({
-//         status: 400,
-//         message: "Su token ha caducado",
-//       });
-//     }
+    const token = jwt.sign(
+      { id: userFound.id },
+      config.JWT_SYS_VALIDATION_SECRET,
+      {
+        expiresIn: "15min",
+      }
+    );
+    const link = `${config.HOST_ADMIN}/auth/verify/?token=${token}`;
 
-//     const userFound = await User.findById(id);
+    const { id, ...rest } = userFound;
 
-//     if (userFound.recoveryToken !== token) {
-//       return res.status(400).json({
-//         status: 400,
-//         message: "Permiso denegado",
-//       });
-//     }
+    await req.firebase.updateDocumentById(
+      SYSTEM_USER_COLLECTION,
+      userFound.id || "",
+      {
+        ...rest,
+        access_token: "",
+        refresh_token: "",
+        validation_token: token,
+        updated_date: generateUTCToLimaDate(),
+      }
+    );
 
-//     const hash = await encryptPassword(newPassword);
+    const template = templateEmailSystemRecoveryAccount({
+      email: userFound.email,
+      firstName: userFound.first_name,
+      lastName: userFound.last_name,
+      link,
+    });
+    const result = await sendMail(template, "system-user recovery-account");
+    if (result.status_code !== 200) {
+      return res.status(result.status_code).json({
+        ...result,
+      });
+    }
+    return res.status(200).json({
+      ...result,
+      message:
+        "Correo enviado éxitosamente, recuerde que el link expirará en 15 min.",
+    });
+  } catch (error) {
+    console.log("system-user recovery-account response - error", error);
+    return res
+      .status(500)
+      .json({ status: 500, errors: ["Ocurrió un error desconocido"] });
+  }
+};
 
-//     await User.findByIdAndUpdate(id, {
-//       token: undefined,
-//       refreshToken: undefined,
-//       recoveryToken: undefined,
-//       password: hash,
-//       updatedDate: generateUTCToLimaDate(),
-//     });
-//     return res.status(200).json({ status: 200, message: "password changed" });
-//   } catch (error) {
-//     console.log(error);
-//     return res.status(400).json({
-//       status: 400,
-//       message: "Ocurrió un error desconocido",
-//     });
-//   }
-// };
+const verifyAccount = async (request: Request, res: Response) => {
+  const req = request as RequestServer;
 
-// const sendMail = async (infoMail: any) => {
-//   try {
-//     let transporter = nodemailer.createTransport({
-//       host: "smtp.gmail.com",
-//       port: 465,
-//       tls: {
-//         rejectUnauthorized: false,
-//       },
-//       secure: true, // true for 465, false for other ports
-//       auth: {
-//         user: `${config.SMTP_EMAIL}`,
-//         pass: `${config.SMTP_PASSWORD}`,
-//       },
-//     });
-//     await transporter.sendMail(infoMail);
-//     return {
-//       status: 200,
-//       message: "Mail Sent",
-//     };
-//   } catch (error) {
-//     console.log(error);
-//     return {
-//       status: 400,
-//       message: "Ocurrió un error",
-//     };
-//   }
-// };
+  const token = req.headers["x-access-token"]?.toString() || "";
+  try {
+    const userFound: SystemUser | null = await req.firebase.getOneDocument(
+      SYSTEM_USER_COLLECTION,
+      [
+        {
+          field: "validation_token",
+          filter: "==",
+          value: token,
+        },
+      ]
+    );
+    if (!userFound) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_NOT_FOUND",
+        errors: ["Usuario no existente"],
+      });
+    }
+
+    if (userFound.id !== req.userId) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "INVALID_TOKEN",
+        errors: ["Token inválido"],
+      });
+    }
+
+    if (userFound.verified == 1) {
+      return res.status(400).json({
+        status_code: 400,
+        error_code: "VERIFIED_USER_ACCOUNT",
+        errors: ["El usuario ya se encuentra verificado"],
+      });
+    }
+
+    const { id, ...rest } = userFound;
+
+    await req.firebase.updateDocumentById(SYSTEM_USER_COLLECTION, id, {
+      ...rest,
+      access_token: "",
+      refresh_token: "",
+      validation_token: "",
+      verified: 1,
+      updated_date: generateUTCToLimaDate(),
+    });
+
+    const link = `${config.HOST_ADMIN}/auth/login`;
+
+    const template = templateEmailSystemVerifyAccount({
+      email: userFound.email,
+      firstName: userFound.first_name,
+      lastName: userFound.last_name,
+      link,
+    });
+
+    await sendMail(template, "system-user verify-account");
+
+    return res.status(200).json({
+      status_code: 200,
+      message: "La cuenta fue verificada",
+      errors: [],
+    });
+  } catch (error) {
+    console.log("system-user verify-account response - error", error);
+    return res
+      .status(500)
+      .json({ status: 500, errors: ["Ocurrió un error desconocido"] });
+  }
+};
+
+const recoveryPassword = async (request: Request, res: Response) => {
+  const req = request as RequestServer;
+  let errors: ErrorFormat[] = [];
+  const resultValidator = validationResult(req);
+
+  if (!resultValidator.isEmpty()) {
+    errors = resultValidator.array().map((data) => data.msg);
+
+    return res.status(400).json({
+      status_code: 400,
+      error_code: "INVALID_BODY_FIELDS",
+      errors,
+    });
+  }
+  try {
+    const { email = undefined } = request.body;
+
+    const userFound: SystemUser | null = await req.firebase.getOneDocument(
+      SYSTEM_USER_COLLECTION,
+      [{ field: "email", filter: "==", value: email }]
+    );
+    if (!userFound) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_NOT_FOUND",
+        errors: ["Correo electrónico no válido"],
+      });
+    }
+    const token = jwt.sign(
+      { id: userFound.id },
+      config.JWT_SYS_VALIDATION_SECRET,
+      {
+        expiresIn: "15min",
+      }
+    );
+    const link = `${config.HOST_ADMIN}/auth/restore/?token=${token}`;
+
+    const { id, ...rest } = userFound;
+
+    await req.firebase.updateDocumentById(
+      SYSTEM_USER_COLLECTION,
+      userFound.id || "",
+      {
+        ...rest,
+        access_token: "",
+        refresh_token: "",
+        validation_token: token,
+        updated_date: generateUTCToLimaDate(),
+      }
+    );
+
+    const template = templateEmailSystemRecoveryPassword({
+      email: userFound.email,
+      firstName: userFound.first_name,
+      lastName: userFound.last_name,
+      link,
+    });
+    const result = await sendMail(template, "system-user recovery-password");
+    if (result.status_code !== 200) {
+      return res.status(result.status_code).json({
+        ...result,
+      });
+    }
+    return res.status(200).json({
+      ...result,
+      message:
+        "Correo enviado éxitosamente, recuerde que el link expirará en 15 min.",
+    });
+  } catch (error) {
+    console.log("system-user recovery-password response - error", error);
+    return res
+      .status(500)
+      .json({ status: 500, errors: ["Ocurrió un error desconocido"] });
+  }
+};
+
+const verifyPassword = async (request: Request, res: Response) => {
+  const req = request as RequestServer;
+
+  const token = req.headers["x-access-token"]?.toString() || "";
+  try {
+    const userFound: SystemUser | null = await req.firebase.getOneDocument(
+      SYSTEM_USER_COLLECTION,
+      [
+        {
+          field: "validation_token",
+          filter: "==",
+          value: token,
+        },
+      ]
+    );
+    if (!userFound) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_NOT_FOUND",
+        errors: ["Usuario no existente"],
+      });
+    }
+
+    if (userFound.id !== req.userId) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "INVALID_TOKEN",
+        errors: ["Token inválido"],
+      });
+    }
+    return res.status(200).json({
+      status_code: 200,
+      message: "Token de recuperación válido",
+      errors: [],
+    });
+  } catch (error) {
+    console.log("system-user verify-password response - error", error);
+    return res
+      .status(500)
+      .json({ status: 500, errors: ["Ocurrió un error desconocido"] });
+  }
+};
+
+const changePassword = async (request: Request, res: Response) => {
+  const req = request as RequestServer;
+
+  let errors: ErrorFormat[] = [];
+  const resultValidator = validationResult(req);
+
+  if (!resultValidator.isEmpty()) {
+    errors = resultValidator.array().map((data) => data.msg);
+
+    return res.status(400).json({
+      status_code: 400,
+      error_code: "INVALID_BODY_FIELDS",
+      errors,
+    });
+  }
+
+  try {
+    const token = request.headers["x-access-token"]?.toString() || "";
+
+    const { new_password = undefined } = req.body;
+
+    const userFound: SystemUser | null = await req.firebase.getOneDocument(
+      SYSTEM_USER_COLLECTION,
+      [
+        {
+          field: "validation_token",
+          filter: "==",
+          value: token,
+        },
+      ]
+    );
+    if (!userFound) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_NOT_FOUND",
+        errors: ["Usuario no existente"],
+      });
+    }
+
+    if (userFound.id !== req.userId) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "INVALID_TOKEN",
+        errors: ["Token inválido"],
+      });
+    }
+
+    const hash = await encryptPassword(new_password);
+
+    const { id, ...rest } = userFound;
+
+    await req.firebase.updateDocumentById(SYSTEM_USER_COLLECTION, id, {
+      ...rest,
+      access_token: "",
+      refresh_token: "",
+      validation_token: "",
+      password: hash,
+      updated_date: generateUTCToLimaDate(),
+    });
+
+    const link = `${config.HOST_ADMIN}/auth/login`;
+
+    const template = templateEmailSystemChangePassword({
+      email: userFound.email,
+      firstName: userFound.first_name,
+      lastName: userFound.last_name,
+      link,
+    });
+
+    await sendMail(template, "system-user change-password");
+
+    return res.status(200).json({
+      status_code: 200,
+      message: "contraseña actualizada",
+      errors: [],
+    });
+  } catch (error) {
+    console.log("system-user change-password response - error", error);
+    return res
+      .status(500)
+      .json({ status: 500, errors: ["Ocurrió un error desconocido"] });
+  }
+};
 
 export {
   login,
-  // , renewToken, verifyToken, sentRecovery, changePassword
+  // , renewToken,
+  recoveryAccount,
+  verifyAccount,
+  recoveryPassword,
+  verifyPassword,
+  changePassword,
 };

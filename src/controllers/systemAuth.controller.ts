@@ -112,6 +112,10 @@ const login = async (request: Request, res: Response) => {
     // obtener role del usuario
     if (newUser.role) {
       newUser.role = await req.firebase.getObjectByReference(newUser.role);
+      newUser.role = req.firebase.cleanValuesDocument(newUser.role, [
+        "created_date",
+        "updated_date",
+      ]);
       if ("permissions" in newUser.role) {
         newUser.role.permissions = await req.firebase.getObjectsByReference(
           newUser.role.permissions
@@ -119,13 +123,13 @@ const login = async (request: Request, res: Response) => {
       }
     }
 
-    newUser.updated_date = new Date(newUser.created_date?.seconds * 1000);
+    newUser.created_date = new Date(newUser.created_date?.seconds * 1000);
     newUser.updated_date = new Date(newUser.updated_date?.seconds * 1000);
 
     const userAccessToken = newUser.access_token.toString();
     const userRefreshToken = newUser.refresh_token.toString();
 
-    newUser = await req.firebase.cleanValuesDocument(newUser, [
+    newUser = req.firebase.cleanValuesDocument(newUser, [
       "password",
       "access_token",
       "refresh_token",

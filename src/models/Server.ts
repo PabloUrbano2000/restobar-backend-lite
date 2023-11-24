@@ -23,7 +23,7 @@ class Server {
     this.app.use(cors());
 
     // Desplegar el directorio público
-    this.app.use(express.static("public"));
+    // this.app.use(express.static("public"));
 
     // Parseo del body
     this.app.use(express.json({ limit: "50mb" }));
@@ -47,6 +47,12 @@ class Server {
   execute() {
     // Inicializar Middlewares
     this.middlewares();
+
+    this.app.get("/", (req, res) => {
+      return res.json({
+        message: "Bienvenido a la api de restobar :)",
+      });
+    });
 
     // Inicializar Server
     this.app.listen(this.port, () => {

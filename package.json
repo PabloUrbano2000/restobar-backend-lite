@@ -5,16 +5,14 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon src/index.ts",
-    "build": "typescript --watch",
-    "start": "node build/src/index.js",
+    "build": "tsc",
+    "start": "node build/index.js",
     "insert:seed": "ts-node src/index.ts --insert-seed",
-    "delete:seed": "ts-node src/index.ts --delete-seed",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "delete:seed": "ts-node src/index.ts --delete-seed"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@types/socket.io": "^3.0.2",
     "autoprefixer": "^10.4.16",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.20.2",
@@ -27,8 +25,7 @@
     "firebase": "^10.6.0",
     "jsonwebtoken": "^9.0.2",
     "moment": "^2.29.4",
-    "nodemailer": "^6.9.7",
-    "socket.io": "^4.7.2"
+    "nodemailer": "^6.9.7"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

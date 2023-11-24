@@ -2,14 +2,18 @@ import { Router } from "express";
 import { body } from "express-validator";
 import {
   login,
-  // renewToken,
+  renewToken,
   recoveryAccount,
   verifyAccount,
   verifyPassword,
   recoveryPassword,
   changePassword,
 } from "../controllers/systemAuth.controller";
-import { verifySysUserValidToken } from "../middlewares";
+import {
+  verifySysUserValidToken,
+  verifySysUserAccessToken,
+  verifySysUserRefreshToken,
+} from "../middlewares";
 
 const router = Router();
 
@@ -30,7 +34,11 @@ router.post(
   login
 );
 
-// router.post("/token/renew", renewToken);
+router.post(
+  "/token/renew",
+  [verifySysUserAccessToken, verifySysUserRefreshToken],
+  renewToken
+);
 
 router.post(
   "/account/recovery",

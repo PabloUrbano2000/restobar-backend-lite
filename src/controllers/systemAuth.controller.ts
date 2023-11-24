@@ -136,90 +136,151 @@ const login = async (request: Request, res: Response) => {
       "validation_token",
     ]);
 
-    return res.json({
-      status: 200,
+    return res.status(200).json({
+      status_code: 200,
       data: {
         user: newUser,
         access_token: userAccessToken,
         refresh_token: userRefreshToken,
       },
-      errors: errors,
+      errors: [],
     });
   } catch (error) {
     console.log("system-user login response - error", error);
     return res
       .status(500)
-      .json({ status: 500, errors: ["Ocurrió un error desconocido"] });
+      .json({ status_code: 500, errors: ["Ocurrió un error desconocido"] });
   }
 };
 
-// const renewToken = async (req: Request, res: Response) => {
-//   const recycleToken = req.headers["x-access-token"]?.toString() || "";
+const renewToken = async (request: Request, res: Response) => {
+  const req = request as RequestServer;
 
-//   try {
-//     if (!recycleToken) {
-//       res.status(401).json({
-//         status: 401,
-//         message: "Token no encontrado",
-//       });
-//     }
-//     const userFound = await User.findOne(
-//       { refreshToken: { $in: recycleToken } },
-//       { password: 0 }
-//     );
+  try {
+    const accessToken = req.headers["x-access-token"]?.toString() || "";
+    const refreshToken = req.body.refresh_token;
 
-//     if (!userFound) {
-//       return res.status(400).json({
-//         status: 401,
-//         message: "Token inválido",
-//       });
-//     }
+    try {
+      jwt.verify(refreshToken, config.JWT_SYS_REFRESH_SECRET);
+    } catch (error) {
+      return res.status(401).json({});
+    }
 
-//     const user: any = jwt.verify(userFound.refreshToken, config.REFRESH_SECRET);
-//     const { id = undefined } = user;
+    const userFound = await req.firebase.getDocumentById(
+      SYSTEM_USER_COLLECTION,
+      req.userId
+    );
 
-//     if (!id) {
-//       return res.status(401).json({
-//         status: 401,
-//         message: "Token inválido",
-//       });
-//     }
+    if (!userFound) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_NOT_FOUND",
+        errors: ["Usuario no existente"],
+      });
+    }
 
-//     const accessToken = jwt.sign({ id }, config.SECRET, {
-//       expiresIn: 86400,
-//     });
+    if (
+      userFound.access_token !== accessToken ||
+      userFound.refresh_token !== refreshToken
+    ) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "INVALID_TOKEN",
+        errors: ["Token inválido"],
+      });
+    }
 
-//     const refreshToken = jwt.sign({ id }, config.REFRESH_SECRET, {
-//       expiresIn: 86400, //24 horas
-//     });
+    if (userFound.verified === 0) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_NOT_VERIFIED",
+        errors: ["Cuenta aún no verificada, por favor valide su cuenta"],
+      });
+    }
 
-//     await User.findByIdAndUpdate(
-//       id,
-//       {
-//         token: accessToken,
-//         refreshToken,
-//         recoveryToken: undefined,
-//         updatedDate: generateUTCToLimaDate(),
-//       },
-//       {
-//         new: true,
-//       }
-//     );
+    if (userFound.status === 0) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_NOT_ENABLED",
+        errors: ["El usuario está deshabilitado"],
+      });
+    }
 
-//     const newUser = await User.findOne(
-//       {
-//         token: { $in: accessToken },
-//       },
-//       { password: 0, recoveryToken: 0 }
-//     )
-//       .populate("employee")
-//       .populate("role");
+    const newAccessToken = jwt.sign(
+      { id: userFound.id },
+      config.JWT_SYS_SECRET,
+      {
+        expiresIn: 86400,
+      }
+    );
 
-//     return res.json({ status: 200, user: newUser });
-//   } catch (error) {
-//     return res.status(401).json({ status: 401, message: "Token inválido" });
-//   }
-// };
+    const newRefreshToken = jwt.sign(
+      { id: userFound.id },
+      config.JWT_SYS_REFRESH_SECRET,
+      {
+        expiresIn: 86400 + 3600 * 2, //26 horas
+      }
+    );
+
+    const { id, ...rest } = userFound;
+
+    await req.firebase.updateDocumentById(SYSTEM_USER_COLLECTION, id, {
+      ...rest,
+      access_token: newAccessToken,
+      refresh_token: newRefreshToken,
+      validation_token: "",
+      updatedDate: generateUTCToLimaDate(),
+    });
+
+    // buscamos el usuario por el id
+    let newUser = await req.firebase.getDocumentById(
+      SYSTEM_USER_COLLECTION,
+      userFound.id || ""
+    );
+
+    // obtener role del usuario
+    if (newUser.role) {
+      newUser.role = await req.firebase.getObjectByReference(newUser.role);
+      newUser.role = req.firebase.cleanValuesDocument(newUser.role, [
+        "created_date",
+        "updated_date",
+      ]);
+      if ("permissions" in newUser.role) {
+        newUser.role.permissions = await req.firebase.getObjectsByReference(
+          newUser.role.permissions
+        );
+      }
+    }
+
+    newUser.created_date = new Date(newUser.created_date?.seconds * 1000);
+    newUser.updated_date = new Date(newUser.updated_date?.seconds * 1000);
+
+    const userAccessToken = newUser.access_token.toString();
+    const userRefreshToken = newUser.refresh_token.toString();
+
+    newUser = req.firebase.cleanValuesDocument(newUser, [
+      "password",
+      "access_token",
+      "refresh_token",
+      "validation_token",
+    ]);
+
+    return res.status(200).json({
+      status_code: 200,
+      data: {
+        user: newUser,
+        access_token: userAccessToken,
+        refresh_token: userRefreshToken,
+      },
+      errors: [],
+    });
+  } catch (error) {
+    console.log("system-user renew-token response - error", error);
+    return res
+      .status(500)
+      .json({ status_code: 500, errors: ["Ocurrió un error desconocido"] });
+  }
+};
 
 const recoveryAccount = async (request: Request, res: Response) => {
   const req = request as RequestServer;
@@ -302,7 +363,7 @@ const recoveryAccount = async (request: Request, res: Response) => {
     console.log("system-user recovery-account response - error", error);
     return res
       .status(500)
-      .json({ status: 500, errors: ["Ocurrió un error desconocido"] });
+      .json({ status_code: 500, errors: ["Ocurrió un error desconocido"] });
   }
 };
 
@@ -376,7 +437,7 @@ const verifyAccount = async (request: Request, res: Response) => {
     console.log("system-user verify-account response - error", error);
     return res
       .status(500)
-      .json({ status: 500, errors: ["Ocurrió un error desconocido"] });
+      .json({ status_code: 500, errors: ["Ocurrió un error desconocido"] });
   }
 };
 
@@ -585,7 +646,7 @@ const changePassword = async (request: Request, res: Response) => {
 
 export {
   login,
-  // , renewToken,
+  renewToken,
   recoveryAccount,
   verifyAccount,
   recoveryPassword,

@@ -92,3 +92,64 @@ export const verifySysUserRefreshToken = async (
     });
   }
 };
+
+export const verifyUserAccessToken = async (
+  request: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const accessToken = request.headers["x-access-token"]?.toString() || "";
+  if (!accessToken) {
+    return res.status(401).json({
+      status_code: 401,
+      error_code: "INVALID_TOKEN",
+      errors: ["Token no válido"],
+    });
+  }
+
+  try {
+    const { id }: any = jwt.verify(accessToken, config.JWT_USER_SECRET);
+    const req = request as RequestServer;
+    req.userId = id;
+    next();
+  } catch (error) {
+    console.log(error);
+    return res.status(401).json({
+      status_code: 401,
+      error_code: "INVALID_TOKEN",
+      errors: ["Token no válido"],
+    });
+  }
+};
+
+export const verifyUserRefreshToken = async (
+  request: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const refreshToken = request.body.refresh_token || "";
+  if (!refreshToken) {
+    return res.status(401).json({
+      status_code: 401,
+      error_code: "INVALID_REFRESH_TOKEN",
+      errors: ["Token no válido"],
+    });
+  }
+
+  try {
+    const { id }: any = jwt.verify(
+      refreshToken,
+      config.JWT_USER_REFRESH_SECRET
+    );
+    const req = request as RequestServer;
+    req.userId = id;
+    next();
+  } catch (error) {
+    console.log(error);
+    return res.status(401).json({
+      status_code: 401,
+      error_code: "INVALID_REFRESH_TOKEN",
+      errors: ["Token no válido"],
+    });
+  }
+};

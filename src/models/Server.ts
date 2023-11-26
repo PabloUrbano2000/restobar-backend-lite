@@ -1,5 +1,5 @@
 // Servidor de Express
-import express, { Express } from "express";
+import express, { Express, Request, Response } from "express";
 import cors from "cors";
 
 import fileUpload from "express-fileupload";
@@ -7,6 +7,16 @@ import fileUpload from "express-fileupload";
 import firebase, { Firebase } from "../firebase";
 
 import systemAuthRouter from "../routes/systemAuth.routes";
+import documentTypeRouter from "../routes/documentType.routes";
+import genderRouter from "../routes/gender.routes";
+import categoryRouter from "../routes/category.routes";
+import receptionRouter from "../routes/reception.routes";
+import clientRouter from "../routes/client.routes";
+import authRouter from "../routes/auth.routes";
+
+import publicRouter from "../routes/public.routes";
+
+import { RequestServer } from "../interfaces/Request";
 
 class Server {
   app: Express;
@@ -36,12 +46,27 @@ class Server {
       })
     );
 
-    this.app.use((req: Request | any, _, next) => {
+    this.app.use((request: Request, _: Response, next) => {
+      const req = request as RequestServer;
       req.firebase = this.firebase;
       next();
     });
 
-    this.app.use("/api/admin", systemAuthRouter);
+    // enrutamientos del administrador
+    this.app.use("/api/admin/auth", systemAuthRouter);
+    this.app.use("/api/admin/document-type", documentTypeRouter);
+    this.app.use("/api/admin/gender", genderRouter);
+    this.app.use("/api/admin/category", categoryRouter);
+    this.app.use("/api/admin/reception", receptionRouter);
+
+    // enrutamientos de cliente
+    this.app.use("/api/client/auth", authRouter);
+
+    // listados con token de cliente
+    this.app.use("/api/client", clientRouter);
+
+    // rutas públicas
+    // this.app.use("/api/public", publicRouter);
   }
 
   execute() {

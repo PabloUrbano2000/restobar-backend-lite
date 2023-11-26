@@ -84,7 +84,7 @@ const login = async (request: Request, res: Response) => {
       { id: userFound.id },
       config.JWT_SYS_REFRESH_SECRET,
       {
-        expiresIn: 86400 + 3600 * 2, //26 horas
+        expiresIn: 86400, //24 horas
       }
     );
 
@@ -99,6 +99,7 @@ const login = async (request: Request, res: Response) => {
         access_token: token,
         refresh_token: refreshToken,
         validation_token: "",
+        last_login: generateUTCToLimaDate(),
         updated_date: generateUTCToLimaDate(),
       }
     );
@@ -123,6 +124,7 @@ const login = async (request: Request, res: Response) => {
       }
     }
 
+    newUser.last_login = new Date(newUser.last_login?.seconds * 1000);
     newUser.created_date = new Date(newUser.created_date?.seconds * 1000);
     newUser.updated_date = new Date(newUser.updated_date?.seconds * 1000);
 
@@ -159,12 +161,6 @@ const renewToken = async (request: Request, res: Response) => {
   try {
     const accessToken = req.headers["x-access-token"]?.toString() || "";
     const refreshToken = req.body.refresh_token;
-
-    try {
-      jwt.verify(refreshToken, config.JWT_SYS_REFRESH_SECRET);
-    } catch (error) {
-      return res.status(401).json({});
-    }
 
     const userFound = await req.firebase.getDocumentById(
       SYSTEM_USER_COLLECTION,
@@ -218,7 +214,7 @@ const renewToken = async (request: Request, res: Response) => {
       { id: userFound.id },
       config.JWT_SYS_REFRESH_SECRET,
       {
-        expiresIn: 86400 + 3600 * 2, //26 horas
+        expiresIn: 86400,
       }
     );
 
@@ -229,7 +225,7 @@ const renewToken = async (request: Request, res: Response) => {
       access_token: newAccessToken,
       refresh_token: newRefreshToken,
       validation_token: "",
-      updatedDate: generateUTCToLimaDate(),
+      updated_date: generateUTCToLimaDate(),
     });
 
     // buscamos el usuario por el id
@@ -252,6 +248,7 @@ const renewToken = async (request: Request, res: Response) => {
       }
     }
 
+    newUser.last_login = new Date(newUser.last_login?.seconds * 1000);
     newUser.created_date = new Date(newUser.created_date?.seconds * 1000);
     newUser.updated_date = new Date(newUser.updated_date?.seconds * 1000);
 

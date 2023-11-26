@@ -19,13 +19,14 @@ export type User = {
   token?: string;
   status?: Status;
   tokens?: UserToken[];
+  last_login?: Date | string;
   created_date?: Date | string;
   updated_date?: Date | string;
 };
 
 export type UserToken = {
-  id: string;
-  user: User;
+  // id?: string;
+  // user?: User;
   access_token: string;
   refresh_token: string;
 };

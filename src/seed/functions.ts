@@ -41,7 +41,12 @@ const firebase = new Firebase();
 
 const insertMasterCollection = async (collection: string, dataList: any) => {
   let newArray: Promise<DocumentReference<DocumentData, DocumentData>>[] = [];
-  const currentData = await firebase.getDocumentsByFilter(collection, [], 10);
+  const { docs: currentData } = await firebase.getDocumentsByFilter(
+    collection,
+    [],
+    [],
+    { limit: 10 }
+  );
   if (currentData.length > 0) {
     console.log(
       `YA EXISTEN DOCUMENTOS EN LA COLECCIÓN ${collection}:`,
@@ -90,9 +95,10 @@ const insertPermissionsInRoleCollection = async (
   }
 
   // buscamos todos los modulos
-  const foundModules = await firebase.getDocumentsByFilter(MODULE_COLLECTION, [
-    { field: "status", filter: "==", value: 1 },
-  ]);
+  const { docs: foundModules } = await firebase.getDocumentsByFilter(
+    MODULE_COLLECTION,
+    [["status", "==", 1]]
+  );
 
   let permissionsArray: DocumentReference<DocumentData, DocumentData>[] = [];
   if (foundModules.length > 0) {
@@ -133,19 +139,17 @@ const insertProductsCollection = async (datalist: any, category: string) => {
     return;
   }
   let newArray: Promise<DocumentReference<DocumentData, DocumentData>>[] = [];
-  const currentData = await firebase.getDocumentsByFilter(
+  const { docs: currentData } = await firebase.getDocumentsByFilter(
     PRODUCT_COLLECTION,
     [
-      {
-        field: "category",
-        filter: "==",
-        value: firebase.instanceReferenceById(
-          CATEGORY_COLLECTION,
-          foundCategory.id
-        ),
-      },
+      [
+        "category",
+        "==",
+        firebase.instanceReferenceById(CATEGORY_COLLECTION, foundCategory.id),
+      ],
     ],
-    10
+    [],
+    { limit: 10 }
   );
   if (currentData.length > 0) {
     console.log(
@@ -177,10 +181,11 @@ const insertProductsCollection = async (datalist: any, category: string) => {
 
 const insertUsersCollection = async () => {
   let newArray: Promise<DocumentReference<DocumentData, DocumentData>>[] = [];
-  const currentData = await firebase.getDocumentsByFilter(
+  const { docs: currentData } = await firebase.getDocumentsByFilter(
     USER_COLLECTION,
     [],
-    10
+    [],
+    { limit: 10 }
   );
   if (currentData.length > 0) {
     console.log(
@@ -208,10 +213,13 @@ const insertUsersCollection = async () => {
 
 const insertSystemUsersCollection = async () => {
   let newArray: Promise<DocumentReference<DocumentData, DocumentData>>[] = [];
-  const currentData = await firebase.getDocumentsByFilter(
+  const { docs: currentData } = await firebase.getDocumentsByFilter(
     SYSTEM_USER_COLLECTION,
     [],
-    10
+    [],
+    {
+      limit: 10,
+    }
   );
   if (currentData.length > 0) {
     console.log(

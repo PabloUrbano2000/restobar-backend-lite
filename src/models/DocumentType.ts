@@ -1,6 +1,9 @@
 import { Status } from "./Generic";
 
-export type Operation = "IDENTITY" | "TRANSACTION";
+export enum OPERATION_TYPE {
+  IDENTITY = "IDENTITY",
+  TRANSACTION = "TRANSACTION",
+}
 
 export type DocumentTypeDB = {
   id?: string;
@@ -8,7 +11,7 @@ export type DocumentTypeDB = {
   code?: string;
   sequential?: number;
   length?: number;
-  operation?: Operation;
+  operation?: OPERATION_TYPE;
   status?: Status;
   regex?: string;
   created_date?: Date | string;

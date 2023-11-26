@@ -1,6 +1,7 @@
 import config from "../config";
 import { generateUTCToLimaDate } from "../helpers/generators";
 import { encryptPassword } from "../helpers/passwords";
+import { OPERATION_TYPE } from "../models/DocumentType";
 import {
   Setting,
   Module,
@@ -146,7 +147,7 @@ export const categoriesData: Category[] = [
 export const documentTypesData: DocumentTypeDB[] = [
   {
     name: DOCUMENT_TYPE_DNI,
-    operation: "IDENTITY",
+    operation: OPERATION_TYPE.IDENTITY,
     status: 1,
     code: "DNI",
     sequential: 0,
@@ -157,7 +158,7 @@ export const documentTypesData: DocumentTypeDB[] = [
   },
   {
     name: "RUC",
-    operation: "IDENTITY",
+    operation: OPERATION_TYPE.IDENTITY,
     status: 1,
     code: "RUC",
     sequential: 0,
@@ -168,27 +169,29 @@ export const documentTypesData: DocumentTypeDB[] = [
   },
   {
     name: "Carnet de Diplomacia",
-    operation: "IDENTITY",
+    operation: OPERATION_TYPE.IDENTITY,
     status: 1,
     code: "CDI",
     sequential: 0,
     length: 0,
+    regex: "/^([a-zA-Z0-9-]{9,15})$/",
     created_date: generateUTCToLimaDate(),
     updated_date: generateUTCToLimaDate(),
   },
   {
     name: "Carnet de Extranjería",
-    operation: "IDENTITY",
+    operation: OPERATION_TYPE.IDENTITY,
     status: 1,
     code: "CEX",
     sequential: 0,
     length: 0,
+    regex: "/^([a-zA-Z0-9-]{9,15})$/",
     created_date: generateUTCToLimaDate(),
     updated_date: generateUTCToLimaDate(),
   },
   {
     name: "Orden",
-    operation: "TRANSACTION",
+    operation: OPERATION_TYPE.TRANSACTION,
     status: 1,
     code: "O001",
     sequential: 0,
@@ -198,7 +201,7 @@ export const documentTypesData: DocumentTypeDB[] = [
   },
   {
     name: "Venta",
-    operation: "TRANSACTION",
+    operation: OPERATION_TYPE.TRANSACTION,
     status: 1,
     code: "V001",
     sequential: 0,

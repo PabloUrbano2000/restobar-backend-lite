@@ -1,0 +1,93 @@
+import { Request, Response } from "express";
+import { RequestServer } from "../interfaces/Request";
+import {
+  DOCUMENT_TYPE_COLLECTION,
+  OPERATION_TYPE,
+} from "../models/DocumentType";
+import { FieldPath, WhereFilterOp } from "firebase/firestore";
+
+const getList = async (request: Request, res: Response) => {
+  const req = request as RequestServer;
+
+  let { q = "" } = req.query;
+
+  const filter: [
+    fieldPath: string | FieldPath,
+    opStr: WhereFilterOp,
+    value: unknown
+  ][] = [];
+
+  q && typeof q == "string" ? (q = q.toUpperCase().trim()) : (q = "");
+
+  if (q === OPERATION_TYPE.IDENTITY || q === OPERATION_TYPE.TRANSACTION) {
+    filter.push(["operation", "==", q]);
+  }
+  try {
+    const result = await req.firebase.getDocumentsByFilter(
+      DOCUMENT_TYPE_COLLECTION,
+      filter,
+      [["name", "asc"]]
+    );
+
+    if (result.docs.length > 0) {
+      const filterData = result.docs.map((data) => ({
+        ...data,
+        created_date: new Date(data?.created_date?.seconds * 1000) || undefined,
+        updated_date: new Date(data?.updated_date?.seconds * 1000) || undefined,
+      }));
+
+      result.docs = filterData;
+    }
+
+    return res.status(200).json({
+      status_code: 200,
+      ...result,
+    });
+  } catch (error) {
+    console.log("document-type get-list response - error", error);
+    return res
+      .status(500)
+      .json({ status_code: 500, errors: ["Ocurrió un error desconocido"] });
+  }
+};
+
+const getPublicList = async (request: Request, res: Response) => {
+  const req = request as RequestServer;
+
+  try {
+    const result = await req.firebase.getDocumentsByFilter(
+      DOCUMENT_TYPE_COLLECTION,
+      [
+        ["operation", "==", OPERATION_TYPE.IDENTITY],
+        ["status", "==", 1],
+      ],
+      [["name", "asc"]]
+    );
+
+    if (result.docs.length > 0) {
+      const filterData = result.docs.map((data) => {
+        data = req.firebase.showValuesDocument(data, [
+          "code",
+          "name",
+          "id",
+          "regex",
+        ]);
+
+        return data;
+      });
+      result.docs = filterData;
+    }
+
+    return res.status(200).json({
+      status_code: 200,
+      docs: result.docs,
+    });
+  } catch (error) {
+    console.log("document-type get-public-list response - error", error);
+    return res
+      .status(500)
+      .json({ status_code: 500, errors: ["Ocurrió un error desconocido"] });
+  }
+};
+
+export { getList, getPublicList };

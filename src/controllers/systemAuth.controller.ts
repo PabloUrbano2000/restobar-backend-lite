@@ -279,6 +279,94 @@ const renewToken = async (request: Request, res: Response) => {
   }
 };
 
+const verifyAccessToken = async (request: Request, res: Response) => {
+  const req = request as RequestServer;
+
+  try {
+    const accessToken = req.headers["x-access-token"]?.toString() || "";
+
+    let userFound = await req.firebase.getDocumentById(
+      SYSTEM_USER_COLLECTION,
+      req.userId
+    );
+
+    if (!userFound) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_NOT_FOUND",
+        errors: ["Usuario no existente"],
+      });
+    }
+
+    if (userFound.access_token !== accessToken) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "INVALID_TOKEN",
+        errors: ["Token inválido"],
+      });
+    }
+
+    if (userFound.verified === 0) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_NOT_VERIFIED",
+        errors: ["Cuenta aún no verificada, por favor valide su cuenta"],
+      });
+    }
+
+    if (userFound.status === 0) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_NOT_ENABLED",
+        errors: ["El usuario está deshabilitado"],
+      });
+    }
+
+    // obtener role del usuario
+    if (userFound.role) {
+      userFound.role = await req.firebase.getObjectByReference(userFound.role);
+      userFound.role = req.firebase.cleanValuesDocument(userFound.role, [
+        "created_date",
+        "updated_date",
+      ]);
+      if ("permissions" in userFound.role) {
+        userFound.role.permissions = await req.firebase.getObjectsByReference(
+          userFound.role.permissions
+        );
+      }
+    }
+
+    userFound.last_login = new Date(userFound.last_login?.seconds * 1000);
+    userFound.created_date = new Date(userFound.created_date?.seconds * 1000);
+    userFound.updated_date = new Date(userFound.updated_date?.seconds * 1000);
+
+    const userAccessToken = userFound.access_token.toString();
+    const userRefreshToken = userFound.refresh_token.toString();
+
+    userFound = req.firebase.cleanValuesDocument(userFound, [
+      "password",
+      "access_token",
+      "refresh_token",
+      "validation_token",
+    ]);
+
+    return res.status(200).json({
+      status_code: 200,
+      data: {
+        user: userFound,
+        access_token: userAccessToken,
+        refresh_token: userRefreshToken,
+      },
+      errors: [],
+    });
+  } catch (error) {
+    console.log("system-user verify-access-token response - error", error);
+    return res
+      .status(500)
+      .json({ status_code: 500, errors: ["Ocurrió un error desconocido"] });
+  }
+};
+
 const recoveryAccount = async (request: Request, res: Response) => {
   const req = request as RequestServer;
   let errors: ErrorFormat[] = [];
@@ -644,6 +732,7 @@ const changePassword = async (request: Request, res: Response) => {
 export {
   login,
   renewToken,
+  verifyAccessToken,
   recoveryAccount,
   verifyAccount,
   recoveryPassword,

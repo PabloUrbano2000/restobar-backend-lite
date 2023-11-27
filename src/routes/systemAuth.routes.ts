@@ -40,6 +40,8 @@ router.post(
   renewToken
 );
 
+router.post("/token/verify", [verifySysUserAccessToken], renewToken);
+
 router.post(
   "/account/recovery",
   [

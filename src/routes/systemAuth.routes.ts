@@ -8,6 +8,7 @@ import {
   verifyPassword,
   recoveryPassword,
   changePassword,
+  verifyAccessToken,
 } from "../controllers/systemAuth.controller";
 import {
   verifySysUserValidToken,
@@ -40,7 +41,7 @@ router.post(
   renewToken
 );
 
-router.post("/token/verify", [verifySysUserAccessToken], renewToken);
+router.post("/token/verify", [verifySysUserAccessToken], verifyAccessToken);
 
 router.post(
   "/account/recovery",

@@ -39,7 +39,7 @@ const getList = async (request: Request, res: Response) => {
       const filterData = result.docs.map((data) => {
         let newData = {
           ...data,
-          last_login: new Date(data?.created_date?.seconds * 1000) || undefined,
+          last_login: new Date(data?.last_login?.seconds * 1000) || undefined,
           created_date:
             new Date(data?.created_date?.seconds * 1000) || undefined,
           updated_date:

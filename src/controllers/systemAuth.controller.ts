@@ -729,6 +729,54 @@ const changePassword = async (request: Request, res: Response) => {
   }
 };
 
+const logout = async (request: Request, res: Response) => {
+  const req = request as RequestServer;
+
+  try {
+    const accessToken = req.headers["x-access-token"]?.toString() || "";
+
+    let userFound = await req.firebase.getDocumentById(
+      SYSTEM_USER_COLLECTION,
+      req.userId
+    );
+
+    if (!userFound) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_NOT_FOUND",
+        errors: ["Usuario no existente"],
+      });
+    }
+
+    if (userFound.access_token !== accessToken) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "INVALID_TOKEN",
+        errors: ["Token inválido"],
+      });
+    }
+
+    const { id, ...rest } = userFound;
+
+    await req.firebase.updateDocumentById(SYSTEM_USER_COLLECTION, id, {
+      ...rest,
+      access_token: "",
+      refresh_token: "",
+    });
+
+    return res.status(200).json({
+      status_code: 200,
+      message: "Sesión cerrada",
+      errors: [],
+    });
+  } catch (error) {
+    console.log("system-user logout response - error", error);
+    return res
+      .status(500)
+      .json({ status_code: 500, errors: ["Ocurrió un error desconocido"] });
+  }
+};
+
 export {
   login,
   renewToken,
@@ -738,4 +786,5 @@ export {
   recoveryPassword,
   verifyPassword,
   changePassword,
+  logout,
 };

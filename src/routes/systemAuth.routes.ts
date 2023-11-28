@@ -9,6 +9,7 @@ import {
   recoveryPassword,
   changePassword,
   verifyAccessToken,
+  logout,
 } from "../controllers/systemAuth.controller";
 import {
   verifySysUserValidToken,
@@ -103,5 +104,7 @@ router.post(
   ],
   changePassword
 );
+
+router.post("/logout", [verifySysUserAccessToken], logout);
 
 export default router;

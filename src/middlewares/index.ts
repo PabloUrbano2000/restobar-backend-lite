@@ -5,6 +5,7 @@ import {
   verifyUserAccessToken,
   verifyUserRefreshToken,
 } from "./jwt";
+import { verifyPermissions } from "./autorization";
 
 export {
   verifySysUserValidToken,
@@ -12,4 +13,5 @@ export {
   verifySysUserRefreshToken,
   verifyUserAccessToken,
   verifyUserRefreshToken,
+  verifyPermissions,
 };

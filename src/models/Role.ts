@@ -13,7 +13,7 @@ export type Role = {
   status?: number;
   created_date?: Date | string;
   updated_date?: Date | string;
-  permissions?: RoleAccess[];
+  permissions?: Module[];
 };
 
 export const ROLE_COLLECTION = "roles";

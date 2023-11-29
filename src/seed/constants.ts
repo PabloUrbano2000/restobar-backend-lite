@@ -8,6 +8,7 @@ export enum ROLES {
 
 export enum MODULES {
   RECEPTIONS = "RECEPTIONS",
+  ROLES = "ROLES",
   SYSTEM_USERS = "SYSTEM_USERS",
   USERS = "USERS",
   PRODUCTS = "PRODUCTS",

@@ -263,6 +263,7 @@ export const executeData = async () => {
     MODULES.RECEPTIONS,
     MODULES.SYSTEM_USERS,
     MODULES.USERS,
+    MODULES.ROLES,
   ]);
   await insertPermissionsInRoleCollection(ROLES.ADMIN, [
     MODULES.ORDERS,

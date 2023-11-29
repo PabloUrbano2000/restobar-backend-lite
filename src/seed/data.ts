@@ -49,6 +49,7 @@ export const settingsData: Setting[] = [
 
 export const modulesData: Module[] = [
   { name: MODULES.RECEPTIONS, status: 1 },
+  { name: MODULES.ROLES, status: 1 },
   {
     name: MODULES.SYSTEM_USERS,
     status: 1,

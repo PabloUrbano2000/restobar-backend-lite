@@ -36,7 +36,7 @@ const login = async (request: Request, res: Response) => {
     const { email = undefined, password = undefined } = req.body;
     const userFound: User | null = await req.firebase.getOneDocument(
       USER_COLLECTION,
-      [{ field: "email", filter: "==", value: email }]
+      [["email", "==", email]]
     );
 
     // si no se encuentra dentro de los usuarios
@@ -314,7 +314,7 @@ const renewToken = async (request: Request, res: Response) => {
 
 //     const userFound: SystemUser | null = await req.firebase.getOneDocument(
 //       SYSTEM_USER_COLLECTION,
-//       [{ field: "email", filter: "==", value: email }]
+//       [["email", "==", email]]
 //     );
 //     if (!userFound) {
 //       return res.status(401).json({
@@ -388,11 +388,11 @@ const renewToken = async (request: Request, res: Response) => {
 //     const userFound: SystemUser | null = await req.firebase.getOneDocument(
 //       SYSTEM_USER_COLLECTION,
 //       [
-//         {
-//           field: "validation_token",
-//           filter: "==",
-//           value: token,
-//         },
+//         [
+//           "validation_token",
+//           "==",
+//           token
+//         ]
 //       ]
 //     );
 //     if (!userFound) {
@@ -473,7 +473,7 @@ const renewToken = async (request: Request, res: Response) => {
 
 //     const userFound: SystemUser | null = await req.firebase.getOneDocument(
 //       SYSTEM_USER_COLLECTION,
-//       [{ field: "email", filter: "==", value: email }]
+//       [["email", "==", email]]
 //     );
 //     if (!userFound) {
 //       return res.status(401).json({
@@ -538,11 +538,11 @@ const renewToken = async (request: Request, res: Response) => {
 //     const userFound: SystemUser | null = await req.firebase.getOneDocument(
 //       SYSTEM_USER_COLLECTION,
 //       [
-//         {
-//           field: "validation_token",
-//           filter: "==",
-//           value: token,
-//         },
+//         [
+//           "validation_token",
+//           "==",
+//           token
+//         ]
 //       ]
 //     );
 //     if (!userFound) {
@@ -597,11 +597,11 @@ const renewToken = async (request: Request, res: Response) => {
 //     const userFound: SystemUser | null = await req.firebase.getOneDocument(
 //       SYSTEM_USER_COLLECTION,
 //       [
-//         {
-//           field: "validation_token",
-//           filter: "==",
-//           value: token,
-//         },
+//         [
+//           "validation_token",
+//           "==",
+//           token
+//         ]
 //       ]
 //     );
 //     if (!userFound) {

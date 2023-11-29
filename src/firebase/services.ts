@@ -142,8 +142,8 @@ class Firebase {
   // obtiene un documento por id
   async getDocumentById(collectionRef: string, id: string) {
     const docRef = doc(this.db, collectionRef, id);
-    const snapshot: any = await getDoc(docRef);
-    if (!snapshot) {
+    const snapshot = await getDoc(docRef);
+    if (!snapshot.data()) {
       return null;
     }
 
@@ -153,13 +153,19 @@ class Firebase {
   }
 
   // obtiene un documento por filtro
-  async getOneDocument(collectionRef: string, filter: Filter[]) {
+  async getOneDocument(
+    collectionRef: string,
+    filter: [
+      fieldPath: string | FieldPath,
+      opStr: WhereFilterOp,
+      value: unknown
+    ][]
+  ) {
     const docRef = collection(this.db, collectionRef);
     const filters: QueryConstraint[] = [];
+    // filtrar elementos por where
     if (filter.length > 0) {
-      const query = filter.map((data) =>
-        where(data.field, data.filter, data.value)
-      );
+      const query = filter.map((data) => where(data[0], data[1], data[2]));
       filters.push(...query);
     }
     filters.push(limit(1));
@@ -183,7 +189,7 @@ class Firebase {
       fieldPath: string | FieldPath,
       opStr: WhereFilterOp,
       value: unknown
-    ][],
+    ][] = [],
     order: [string | FieldPath, OrderByDirection | undefined][] = [],
     paginate: PaginateData = { limit: 100, offset: 0 }
   ) {
@@ -332,80 +338,6 @@ class Firebase {
     }
     return [];
   }
-
-  // async testDocuments() {
-  //   let limitF = 10;
-  //   let offset = 0;
-  //   const coleccion = "perros";
-
-  //   const totalDocs = (await getDocs(collection(this.db, coleccion))).size;
-
-  //   // Query the first page of docs
-  //   const first = query(
-  //     collection(this.db, coleccion),
-  //     orderBy("name"),
-  //     limit(offset === 0 ? limitF : limitF * offset)
-  //   );
-  //   const documentSnapshots = await getDocs(first);
-
-  //   // inicialización
-  //   let documents = documentSnapshots.docs.map((data) => ({
-  //     id: data.id,
-  //     ...data.data(),
-  //   }));
-
-  //   // en caso de buscar otro path
-  //   if (offset > 0 && limitF < totalDocs) {
-  //     // Get the last visible document
-  //     const lastVisible =
-  //       documentSnapshots.docs[documentSnapshots.docs.length - 1];
-
-  //     const next = query(
-  //       collection(this.db, coleccion),
-  //       orderBy("name"),
-  //       startAfter(lastVisible),
-  //       limit(limitF)
-  //     );
-
-  //     const getItems = await getDocs(next);
-
-  //     documents = getItems.docs.map((data) => ({
-  //       id: data.id,
-  //       ...data.data(),
-  //     }));
-  //   }
-
-  //   let hasPreviousPage = true;
-
-  //   if (offset <= 0) {
-  //     hasPreviousPage = false;
-  //   } else if (limitF >= totalDocs) {
-  //     hasPreviousPage = false;
-  //   }
-
-  //   let hasNextPage = true;
-
-  //   if (totalDocs <= 0) {
-  //     hasNextPage = false;
-  //   } else {
-  //     if (offset <= 0 && limitF >= totalDocs) {
-  //       hasNextPage = false;
-  //     } else {
-  //       if (limitF * (offset + 1) >= totalDocs) {
-  //         hasNextPage = false;
-  //       }
-  //     }
-  //   }
-
-  //   console.log({
-  //     totalDocs,
-  //     hasPreviousPage,
-  //     hasNextPage,
-  //     limit: limitF,
-  //     offset,
-  //     data: documents,
-  //   });
-  // }
 }
 
 const firebase = new Firebase();

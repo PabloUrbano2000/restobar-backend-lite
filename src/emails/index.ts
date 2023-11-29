@@ -1,4 +1,5 @@
 import {
+  templateEmailSystemWelcome,
   templateEmailSystemRecoveryAccount,
   templateEmailSystemVerifyAccount,
   templateEmailSystemRecoveryPassword,
@@ -13,6 +14,7 @@ import {
 import { sendMail } from "./services";
 
 export {
+  templateEmailSystemWelcome,
   templateEmailSystemRecoveryAccount,
   templateEmailSystemVerifyAccount,
   templateEmailSystemRecoveryPassword,

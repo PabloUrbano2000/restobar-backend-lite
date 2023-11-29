@@ -6,8 +6,9 @@ import { Module } from "../models/Module";
 export const verifyPermissions = (moduleName: string) => {
   return async (request: Request, res: Response, next: NextFunction) => {
     const req = request as RequestServer;
-    const userId = req.userId;
-    if (!userId) {
+    const accessToken = request.headers["x-access-token"]?.toString() || "";
+
+    if (!req.userId) {
       return res.status(401).json({
         status_code: 401,
         error_code: "INVALID_TOKEN",
@@ -18,14 +19,15 @@ export const verifyPermissions = (moduleName: string) => {
     try {
       const userFound = await req.firebase.getDocumentById(
         SYSTEM_USER_COLLECTION,
-        userId
+        req.userId
       );
 
       if (
         !userFound ||
         userFound.verified === 0 ||
         userFound.status === 0 ||
-        !userFound.role
+        !userFound.role ||
+        userFound.access_token !== accessToken
       ) {
         return res.status(401).json({
           status_code: 401,

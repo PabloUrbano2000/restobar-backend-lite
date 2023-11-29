@@ -1,5 +1,5 @@
 import moment from "moment";
-export const generatorPassword = (numberCharacters: number) => {
+export const generatePassword = (numberCharacters: number) => {
   const arrayCharacters = [
     "p",
     "q",

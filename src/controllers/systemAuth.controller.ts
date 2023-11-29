@@ -35,7 +35,7 @@ const login = async (request: Request, res: Response) => {
     const { email = undefined, password = undefined } = req.body;
     const userFound: SystemUser | null = await req.firebase.getOneDocument(
       SYSTEM_USER_COLLECTION,
-      [{ field: "email", filter: "==", value: email }]
+      [["email", "==", email]]
     );
 
     // si no se encuentra dentro de los usuarios
@@ -386,7 +386,7 @@ const recoveryAccount = async (request: Request, res: Response) => {
 
     const userFound: SystemUser | null = await req.firebase.getOneDocument(
       SYSTEM_USER_COLLECTION,
-      [{ field: "email", filter: "==", value: email }]
+      [["email", "==", email]]
     );
     if (!userFound) {
       return res.status(401).json({
@@ -459,13 +459,7 @@ const verifyAccount = async (request: Request, res: Response) => {
   try {
     const userFound: SystemUser | null = await req.firebase.getOneDocument(
       SYSTEM_USER_COLLECTION,
-      [
-        {
-          field: "validation_token",
-          filter: "==",
-          value: token,
-        },
-      ]
+      [["validation_token", "==", token]]
     );
     if (!userFound) {
       return res.status(401).json({
@@ -545,7 +539,7 @@ const recoveryPassword = async (request: Request, res: Response) => {
 
     const userFound: SystemUser | null = await req.firebase.getOneDocument(
       SYSTEM_USER_COLLECTION,
-      [{ field: "email", filter: "==", value: email }]
+      [["email", "==", email]]
     );
     if (!userFound) {
       return res.status(401).json({
@@ -609,13 +603,7 @@ const verifyPassword = async (request: Request, res: Response) => {
   try {
     const userFound: SystemUser | null = await req.firebase.getOneDocument(
       SYSTEM_USER_COLLECTION,
-      [
-        {
-          field: "validation_token",
-          filter: "==",
-          value: token,
-        },
-      ]
+      [["validation_token", "==", token]]
     );
     if (!userFound) {
       return res.status(401).json({
@@ -668,13 +656,7 @@ const changePassword = async (request: Request, res: Response) => {
 
     const userFound: SystemUser | null = await req.firebase.getOneDocument(
       SYSTEM_USER_COLLECTION,
-      [
-        {
-          field: "validation_token",
-          filter: "==",
-          value: token,
-        },
-      ]
+      [["validation_token", "==", token]]
     );
     if (!userFound) {
       return res.status(401).json({

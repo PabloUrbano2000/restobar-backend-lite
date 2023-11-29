@@ -71,11 +71,7 @@ const insertPermissionsInRoleCollection = async (
   permissions: string[] = []
 ) => {
   const currentData = await firebase.getOneDocument(ROLE_COLLECTION, [
-    {
-      field: "name",
-      filter: "==",
-      value: roleName,
-    },
+    ["name", "==", roleName],
   ]);
   if (!currentData) {
     console.log(
@@ -129,11 +125,7 @@ const insertPermissionsInRoleCollection = async (
 
 const insertProductsCollection = async (datalist: any, category: string) => {
   const foundCategory = await firebase.getOneDocument(CATEGORY_COLLECTION, [
-    {
-      field: "name",
-      filter: "==",
-      value: category,
-    },
+    ["name", "==", category],
   ]);
   if (!foundCategory) {
     return;
@@ -230,11 +222,7 @@ const insertSystemUsersCollection = async () => {
   }
   if (systemUsersData.length > 0) {
     const foundRole = await firebase.getOneDocument(ROLE_COLLECTION, [
-      {
-        field: "name",
-        filter: "==",
-        value: ROLES.GLOBAL_ADMIN,
-      },
+      ["name", "==", ROLES.GLOBAL_ADMIN],
     ]);
     if (foundRole) {
       const encryptPasswords = await Promise.all(

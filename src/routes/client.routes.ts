@@ -7,9 +7,13 @@ import { verifyUserAccessToken } from "../middlewares";
 
 const router = Router();
 
-router.get("/category/list", [verifyUserAccessToken], getCategoryList);
-router.get("/gender/list", [verifyUserAccessToken], getGenderList);
-router.get("/document-type/list", [verifyUserAccessToken], getDocumentTypeList);
-router.get("/reception/list", [verifyUserAccessToken], getReceptionList);
+router.post("/category/list", [verifyUserAccessToken], getCategoryList);
+router.post("/gender/list", [verifyUserAccessToken], getGenderList);
+router.post(
+  "/document-type/list",
+  [verifyUserAccessToken],
+  getDocumentTypeList
+);
+router.post("/reception/list", [verifyUserAccessToken], getReceptionList);
 
 export default router;

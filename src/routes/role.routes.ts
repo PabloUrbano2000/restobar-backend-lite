@@ -4,7 +4,7 @@ import { getList } from "../controllers/role.controller";
 
 const router = Router();
 
-router.get(
+router.post(
   "/list",
   [verifySysUserAccessToken, verifyPermissions("ROLES")],
   getList

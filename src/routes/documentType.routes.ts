@@ -4,6 +4,6 @@ import { getList } from "../controllers/documentType.controller";
 
 const router = Router();
 
-router.get("/list", [verifySysUserAccessToken], getList);
+router.post("/list", [verifySysUserAccessToken], getList);
 
 export default router;

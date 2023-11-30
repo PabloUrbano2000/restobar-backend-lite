@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { RequestServer } from "../interfaces/Request";
 import { FieldPath, WhereFilterOp } from "firebase/firestore";
-import { SYSTEM_USER_COLLECTION } from "../models/SystemUser";
+import { SYSTEM_USER_COLLECTION, SystemUser } from "../models/SystemUser";
 import { ErrorFormat } from "../interfaces/Error";
 import { validationResult } from "express-validator";
 import { ROLE_COLLECTION } from "../models/Role";
@@ -131,6 +131,7 @@ const getSystemUser = async (request: Request, res: Response) => {
     userFound.updated_date = new Date(userFound.updated_date?.seconds * 1000);
 
     const newUser = req.firebase.cleanValuesDocument(userFound, [
+      "account_suspension_day",
       "password",
       "access_token",
       "refresh_token",
@@ -192,7 +193,7 @@ const createSystemUser = async (request: Request, res: Response) => {
       return res.status(401).json({
         status_code: 401,
         error_code: "ROLE_NOT_FOUND",
-        errors: ["El rol no existe"],
+        errors: ["Rol no existente"],
       });
     }
 
@@ -253,10 +254,12 @@ const createSystemUser = async (request: Request, res: Response) => {
       }
     );
 
+    const { id: userId, ...rest } = userFound;
+
     // si la cuenta requiere verificación actualizamos el usuario con su token de verificación
     if (enableVerify === 1) {
       await req.firebase.updateDocumentById(SYSTEM_USER_COLLECTION, result.id, {
-        ...userFound,
+        ...rest,
         validation_token: token,
       });
     }
@@ -292,6 +295,7 @@ const createSystemUser = async (request: Request, res: Response) => {
     ]);
 
     const cleanUser = req.firebase.cleanValuesDocument(userFound, [
+      "account_suspension_day",
       "password",
       "access_token",
       "refresh_token",
@@ -314,4 +318,317 @@ const createSystemUser = async (request: Request, res: Response) => {
   }
 };
 
-export { getList, getSystemUser, createSystemUser };
+const updateSystemUser = async (request: Request, res: Response) => {
+  const req = request as RequestServer;
+  let errors: ErrorFormat[] = [];
+  const resultValidator = validationResult(req);
+
+  if (!resultValidator.isEmpty()) {
+    errors = resultValidator.array().map((data) => data.msg);
+
+    return res.status(400).json({
+      status_code: 400,
+      error_code: "INVALID_BODY_FIELDS",
+      errors,
+    });
+  }
+
+  try {
+    const {
+      id = undefined,
+      first_name = undefined,
+      last_name = undefined,
+      role = undefined,
+    } = req.body;
+
+    let dataAux: any = {};
+
+    if (
+      first_name === undefined &&
+      last_name === undefined &&
+      role === undefined
+    ) {
+      return res.status(400).json({
+        status_code: 400,
+        error_code: "INVALID_BODY_FIELDS",
+        errors: ["No se envió información para actualizar"],
+      });
+    }
+
+    const userFound = await req.firebase.getDocumentById(
+      SYSTEM_USER_COLLECTION,
+      id
+    );
+
+    if (first_name) {
+      dataAux.first_name = first_name;
+    }
+    if (last_name) {
+      dataAux.last_name = last_name;
+    }
+
+    if (!userFound) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_NOT_FOUND",
+        errors: ["Usuario no existente"],
+      });
+    }
+
+    if (role) {
+      const roleObject = await req.firebase.getDocumentById(
+        ROLE_COLLECTION,
+        role
+      );
+
+      if (!roleObject) {
+        return res.status(401).json({
+          status_code: 401,
+          error_code: "ROLE_NOT_FOUND",
+          errors: ["Rol no existente"],
+        });
+      }
+
+      const roleInstance = req.firebase.instanceReferenceById(
+        ROLE_COLLECTION,
+        roleObject.id
+      );
+
+      dataAux.role = roleInstance;
+    }
+
+    const { id: userId, ...rest } = userFound;
+
+    await req.firebase.updateDocumentById(SYSTEM_USER_COLLECTION, id, {
+      ...rest,
+      ...dataAux,
+      updated_date: generateUTCToLimaDate(),
+    });
+
+    const newUser = await req.firebase.getDocumentById(
+      SYSTEM_USER_COLLECTION,
+      id
+    );
+
+    newUser.last_login = new Date(newUser.last_login?.seconds * 1000);
+    newUser.created_date = new Date(newUser.created_date?.seconds * 1000);
+    newUser.updated_date = new Date(newUser.updated_date?.seconds * 1000);
+
+    newUser.role = await req.firebase.getObjectByReference(newUser.role);
+    newUser.role = req.firebase.cleanValuesDocument(newUser.role, [
+      "created_date",
+      "updated_date",
+      "permissions",
+    ]);
+
+    const cleanUser = req.firebase.cleanValuesDocument(newUser, [
+      "account_suspension_day",
+      "password",
+      "access_token",
+      "refresh_token",
+      "validation_token",
+    ]);
+
+    return res.status(200).json({
+      status_code: 200,
+      data: {
+        user: cleanUser,
+      },
+      message: "Usuario actualizado éxitosamente",
+      errors: [],
+    });
+  } catch (error) {
+    console.log("system-user update-system-user response - error", error);
+    return res
+      .status(500)
+      .json({ status_code: 500, errors: ["Ocurrió un error desconocido"] });
+  }
+};
+
+const disableSystemUser = async (request: Request, res: Response) => {
+  const req = request as RequestServer;
+  let errors: ErrorFormat[] = [];
+  const resultValidator = validationResult(req);
+
+  if (!resultValidator.isEmpty()) {
+    errors = resultValidator.array().map((data) => data.msg);
+
+    return res.status(400).json({
+      status_code: 400,
+      error_code: "INVALID_BODY_FIELDS",
+      errors,
+    });
+  }
+
+  try {
+    const { id = undefined } = req.body;
+
+    const userFound = await req.firebase.getDocumentById(
+      SYSTEM_USER_COLLECTION,
+      id
+    );
+
+    if (!userFound) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_NOT_FOUND",
+        errors: ["Usuario no existente"],
+      });
+    }
+
+    if (userFound.status === 0) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_IS_DISABLED",
+        errors: ["El usuario se encuentra inhabilitado"],
+      });
+    }
+
+    const { id: userId, ...rest } = userFound;
+
+    await req.firebase.updateDocumentById(SYSTEM_USER_COLLECTION, id, {
+      ...rest,
+      status: 0,
+      access_token: "",
+      refresh_token: "",
+      validation_token: "",
+      account_suspension_day: generateUTCToLimaDate(),
+      updated_date: generateUTCToLimaDate(),
+    });
+
+    const newUser = await req.firebase.getDocumentById(
+      SYSTEM_USER_COLLECTION,
+      id
+    );
+
+    newUser.last_login = new Date(newUser.last_login?.seconds * 1000);
+    newUser.created_date = new Date(newUser.created_date?.seconds * 1000);
+    newUser.updated_date = new Date(newUser.updated_date?.seconds * 1000);
+
+    newUser.role = await req.firebase.getObjectByReference(newUser.role);
+    newUser.role = req.firebase.cleanValuesDocument(newUser.role, [
+      "created_date",
+      "updated_date",
+      "permissions",
+    ]);
+
+    const cleanUser = req.firebase.cleanValuesDocument(newUser, [
+      "account_suspension_day",
+      "password",
+      "access_token",
+      "refresh_token",
+      "validation_token",
+    ]);
+
+    return res.status(200).json({
+      status_code: 200,
+      data: {
+        user: cleanUser,
+      },
+      message: "Usuario inhabilitado éxitosamente",
+      errors: [],
+    });
+  } catch (error) {
+    console.log("system-user disable-system-user response - error", error);
+    return res
+      .status(500)
+      .json({ status_code: 500, errors: ["Ocurrió un error desconocido"] });
+  }
+};
+
+const enableSystemUser = async (request: Request, res: Response) => {
+  const req = request as RequestServer;
+  let errors: ErrorFormat[] = [];
+  const resultValidator = validationResult(req);
+
+  if (!resultValidator.isEmpty()) {
+    errors = resultValidator.array().map((data) => data.msg);
+
+    return res.status(400).json({
+      status_code: 400,
+      error_code: "INVALID_BODY_FIELDS",
+      errors,
+    });
+  }
+
+  try {
+    const { id = undefined } = req.body;
+
+    const userFound = await req.firebase.getDocumentById(
+      SYSTEM_USER_COLLECTION,
+      id
+    );
+
+    if (!userFound) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_NOT_FOUND",
+        errors: ["Usuario no existente"],
+      });
+    }
+
+    if (userFound.status === 1) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_IS_ENABLED",
+        errors: ["El usuario se encuentra habilitado"],
+      });
+    }
+
+    const { id: userId, ...rest } = userFound;
+
+    await req.firebase.updateDocumentById(SYSTEM_USER_COLLECTION, id, {
+      ...rest,
+      status: 1,
+      account_suspension_day: generateUTCToLimaDate(),
+      updated_date: generateUTCToLimaDate(),
+    });
+
+    const newUser = await req.firebase.getDocumentById(
+      SYSTEM_USER_COLLECTION,
+      id
+    );
+
+    newUser.last_login = new Date(newUser.last_login?.seconds * 1000);
+    newUser.created_date = new Date(newUser.created_date?.seconds * 1000);
+    newUser.updated_date = new Date(newUser.updated_date?.seconds * 1000);
+
+    newUser.role = await req.firebase.getObjectByReference(newUser.role);
+    newUser.role = req.firebase.cleanValuesDocument(newUser.role, [
+      "created_date",
+      "updated_date",
+      "permissions",
+    ]);
+
+    const cleanUser = req.firebase.cleanValuesDocument(newUser, [
+      "account_suspension_day",
+      "password",
+      "access_token",
+      "refresh_token",
+      "validation_token",
+    ]);
+
+    return res.status(200).json({
+      status_code: 200,
+      data: {
+        user: cleanUser,
+      },
+      message: "Usuario habilitado éxitosamente",
+      errors: [],
+    });
+  } catch (error) {
+    console.log("system-user enable-system-user response - error", error);
+    return res
+      .status(500)
+      .json({ status_code: 500, errors: ["Ocurrió un error desconocido"] });
+  }
+};
+
+export {
+  getList,
+  getSystemUser,
+  createSystemUser,
+  updateSystemUser,
+  disableSystemUser,
+  enableSystemUser,
+};

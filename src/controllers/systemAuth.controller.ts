@@ -132,6 +132,7 @@ const login = async (request: Request, res: Response) => {
     const userRefreshToken = newUser.refresh_token.toString();
 
     newUser = req.firebase.cleanValuesDocument(newUser, [
+      "account_suspension_day",
       "password",
       "access_token",
       "refresh_token",
@@ -256,6 +257,7 @@ const renewToken = async (request: Request, res: Response) => {
     const userRefreshToken = newUser.refresh_token.toString();
 
     newUser = req.firebase.cleanValuesDocument(newUser, [
+      "account_suspension_day",
       "password",
       "access_token",
       "refresh_token",
@@ -344,6 +346,7 @@ const verifyAccessToken = async (request: Request, res: Response) => {
     const userRefreshToken = userFound.refresh_token.toString();
 
     userFound = req.firebase.cleanValuesDocument(userFound, [
+      "account_suspension_day",
       "password",
       "access_token",
       "refresh_token",

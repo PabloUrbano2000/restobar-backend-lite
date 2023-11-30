@@ -172,7 +172,7 @@ const createSystemUser = async (request: Request, res: Response) => {
 
     const isExistUserByEmail = await req.firebase.getOneDocument(
       SYSTEM_USER_COLLECTION,
-      [["email", "==", email]]
+      [["email", "==", email?.toLowerCase()]]
     );
 
     if (isExistUserByEmail) {
@@ -228,7 +228,7 @@ const createSystemUser = async (request: Request, res: Response) => {
       first_name: first_name.trim(),
       last_name: last_name.trim(),
       second_last_name: "",
-      email: email.trim(),
+      email: email.toLowerCase().trim(),
       password: hash,
       photo: "",
       status: 1,
@@ -264,7 +264,7 @@ const createSystemUser = async (request: Request, res: Response) => {
     const link = `${config.HOST_ADMIN}/auth/verify/?token=${token}`;
 
     const template = templateEmailSystemWelcome({
-      email: email.trim(),
+      email: email.toLowerCase().trim(),
       firstName: first_name.trim(),
       lastName: last_name.trim(),
       link,

@@ -32,10 +32,10 @@ const login = async (request: Request, res: Response) => {
   }
 
   try {
-    const { email = undefined, password = undefined } = req.body;
+    const { email = "", password = "" } = req.body;
     const userFound: SystemUser | null = await req.firebase.getOneDocument(
       SYSTEM_USER_COLLECTION,
-      [["email", "==", email]]
+      [["email", "==", email?.toLowerCase()]]
     );
 
     // si no se encuentra dentro de los usuarios
@@ -382,11 +382,11 @@ const recoveryAccount = async (request: Request, res: Response) => {
     });
   }
   try {
-    const { email = undefined } = request.body;
+    const { email = "" } = request.body;
 
     const userFound: SystemUser | null = await req.firebase.getOneDocument(
       SYSTEM_USER_COLLECTION,
-      [["email", "==", email]]
+      [["email", "==", email?.toLowerCase()]]
     );
     if (!userFound) {
       return res.status(401).json({
@@ -535,11 +535,11 @@ const recoveryPassword = async (request: Request, res: Response) => {
     });
   }
   try {
-    const { email = undefined } = request.body;
+    const { email = "" } = request.body;
 
     const userFound: SystemUser | null = await req.firebase.getOneDocument(
       SYSTEM_USER_COLLECTION,
-      [["email", "==", email]]
+      [["email", "==", email?.toLowerCase()]]
     );
     if (!userFound) {
       return res.status(401).json({

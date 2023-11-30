@@ -33,10 +33,10 @@ const login = async (request: Request, res: Response) => {
   }
 
   try {
-    const { email = undefined, password = undefined } = req.body;
+    const { email = "", password = "" } = req.body;
     const userFound: User | null = await req.firebase.getOneDocument(
       USER_COLLECTION,
-      [["email", "==", email]]
+      [["email", "==", email?.toLowerCase()]]
     );
 
     // si no se encuentra dentro de los usuarios

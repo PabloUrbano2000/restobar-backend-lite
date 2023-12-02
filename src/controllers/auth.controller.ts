@@ -3,8 +3,8 @@ import jwt from "jsonwebtoken";
 import config from "../config";
 import { RequestServer } from "../interfaces/Request";
 import { ErrorFormat } from "../interfaces/Error";
-import { User, UserToken } from "../models/Entities";
-import { USER_COLLECTION } from "../models/Collections";
+import { Setting, User, UserToken } from "../models/Entities";
+import { SETTING_COLLECTION, USER_COLLECTION } from "../models/Collections";
 
 import { validationResult } from "express-validator";
 import { generateUTCToLimaDate } from "../helpers/generators";
@@ -15,6 +15,7 @@ import {
   templateEmailUserRecoveryPassword,
   templateEmailUserChangePassword,
   sendMail,
+  templateEmailUserWelcome,
 } from "../emails";
 
 const login = async (request: Request, res: Response) => {
@@ -102,7 +103,7 @@ const login = async (request: Request, res: Response) => {
     }
 
     // actualizamos el usuario con sus nuevas credenciales
-    await req.firebase.updateDocumentById(USER_COLLECTION, userFound.id || "", {
+    await req.firebase.updateDocumentById(USER_COLLECTION, id || "", {
       ...rest,
       tokens: [
         ...tokens,
@@ -118,30 +119,14 @@ const login = async (request: Request, res: Response) => {
       userFound.id || ""
     );
 
-    // obtener role del usuario
-    if (newUser.role) {
-      newUser.role = await req.firebase.getObjectByReference(newUser.role);
-      newUser.role = req.firebase.cleanValuesDocument(newUser.role, [
-        "created_date",
-        "updated_date",
-      ]);
-      if ("permissions" in newUser.role) {
-        newUser.role.permissions = await req.firebase.getObjectsByReference(
-          newUser.role.permissions
-        );
-      }
-    }
-
     newUser = req.firebase.cleanValuesDocument(newUser, [
       "last_login",
       "created_date",
       "updated_date",
       "password",
       "status",
-      "access_token",
-      "refresh_token",
       "tokens",
-      "validation_token",
+      "token",
     ]);
 
     return res.status(200).json({
@@ -161,12 +146,151 @@ const login = async (request: Request, res: Response) => {
   }
 };
 
+const createUser = async (request: Request, res: Response) => {
+  const req = request as RequestServer;
+  let errors: ErrorFormat[] = [];
+  const resultValidator = validationResult(req);
+
+  if (!resultValidator.isEmpty()) {
+    errors = resultValidator.array().map((data) => data.msg);
+
+    return res.status(400).json({
+      status_code: 400,
+      error_code: "INVALID_BODY_FIELDS",
+      errors,
+    });
+  }
+
+  try {
+    const {
+      first_name = "",
+      last_name = "",
+      second_last_name = "",
+      email = "",
+      password = "",
+    } = req.body;
+
+    const isExistUserByEmail = await req.firebase.getOneDocument(
+      USER_COLLECTION,
+      [["email", "==", email?.toLowerCase()]]
+    );
+
+    if (isExistUserByEmail) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_EXIST",
+        errors: ["El usuario ya se encuentra registrado"],
+      });
+    }
+
+    const settingFound: Setting | null = await req.firebase.getOneDocument(
+      SETTING_COLLECTION,
+      [["status", "==", 1]]
+    );
+
+    if (!settingFound) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "SETTING_NOT_FOUND",
+        errors: ["No existe un archivo de configuración activo"],
+      });
+    }
+
+    const hash = await encryptPassword(password);
+
+    let enableVerify = 0;
+
+    if (settingFound.user_double_opt_in === 1) {
+      enableVerify = 1;
+    }
+
+    const result = await req.firebase.insertDocument(USER_COLLECTION, {
+      first_name: first_name.trim(),
+      last_name: last_name.trim(),
+      second_last_name: second_last_name.trim(),
+      email: email.toLowerCase().trim(),
+      password: hash,
+      photo: "",
+      status: 1,
+      verified: enableVerify === 1 ? 0 : 1,
+      token: "",
+      tokens: [],
+      created_date: generateUTCToLimaDate(),
+    });
+
+    const userFound = await req.firebase.getDocumentById(
+      USER_COLLECTION,
+      result.id
+    );
+
+    const token = jwt.sign(
+      { id: result.id },
+      config.JWT_USER_VALIDATION_SECRET,
+      {
+        expiresIn: "15min",
+      }
+    );
+
+    const { id: userId, ...rest } = userFound;
+
+    // si la cuenta requiere verificación actualizamos el usuario con su token de verificación
+    if (enableVerify === 1) {
+      await req.firebase.updateDocumentById(USER_COLLECTION, result.id, {
+        ...rest,
+        token,
+      });
+    }
+
+    const link = `${config.HOST_ADMIN}/auth/verify/?token=${token}`;
+
+    const template = templateEmailUserWelcome({
+      email: email.toLowerCase().trim(),
+      firstName: first_name.trim(),
+      lastName: last_name.trim(),
+      link,
+      isValidationEnable: enableVerify === 1 ? true : false,
+    });
+
+    const resEmail = await sendMail(template, "user create-user");
+
+    if (resEmail.status_code !== 200) {
+      return res.status(resEmail.status_code).json({
+        ...result,
+      });
+    }
+
+    userFound.last_login = new Date(userFound.last_login?.seconds * 1000);
+    userFound.created_date = new Date(userFound.created_date?.seconds * 1000);
+    userFound.updated_date = new Date(userFound.updated_date?.seconds * 1000);
+
+    const cleanUser = req.firebase.cleanValuesDocument(userFound, [
+      "password",
+      "token",
+      "tokens",
+    ]);
+
+    return res.status(200).json({
+      status_code: 200,
+      data: {
+        user: cleanUser,
+      },
+      message: "Usuario registrado éxitosamente",
+      errors: [],
+    });
+  } catch (error) {
+    console.log("user create-user response - error", error);
+    return res
+      .status(500)
+      .json({ status_code: 500, errors: ["Ocurrió un error desconocido"] });
+  }
+};
+
 const renewToken = async (request: Request, res: Response) => {
   const req = request as RequestServer;
 
   try {
     const accessToken = req.headers["x-access-token"]?.toString() || "";
-    const refreshToken = req.body.refresh_token;
+    const refreshToken = req.body?.refresh_token;
 
     const userFound: User | null = await req.firebase.getDocumentById(
       USER_COLLECTION,
@@ -239,7 +363,7 @@ const renewToken = async (request: Request, res: Response) => {
 
     let tokens: UserToken[] = [];
 
-    userFound.tokens.forEach((token) => {
+    userFound?.tokens?.forEach((token) => {
       if (
         token.access_token === accessToken &&
         token.refresh_token === refreshToken
@@ -253,18 +377,14 @@ const renewToken = async (request: Request, res: Response) => {
       }
     });
 
-    if (userFound.tokens)
-      await req.firebase.updateDocumentById(USER_COLLECTION, id, {
-        ...rest,
-        tokens,
-        updated_date: generateUTCToLimaDate(),
-      });
+    await req.firebase.updateDocumentById(USER_COLLECTION, id, {
+      ...rest,
+      tokens,
+      updated_date: generateUTCToLimaDate(),
+    });
 
     // buscamos el usuario por el id
-    let newUser = await req.firebase.getDocumentById(
-      USER_COLLECTION,
-      userFound.id || ""
-    );
+    let newUser = await req.firebase.getDocumentById(USER_COLLECTION, id || "");
 
     newUser = req.firebase.cleanValuesDocument(newUser, [
       "last_login",
@@ -272,10 +392,8 @@ const renewToken = async (request: Request, res: Response) => {
       "updated_date",
       "password",
       "status",
-      "access_token",
-      "refresh_token",
       "tokens",
-      "validation_token",
+      "token",
     ]);
 
     return res.status(200).json({
@@ -295,374 +413,492 @@ const renewToken = async (request: Request, res: Response) => {
   }
 };
 
-// const recoveryAccount = async (request: Request, res: Response) => {
-//   const req = request as RequestServer;
-//   let errors: ErrorFormat[] = [];
-//   const resultValidator = validationResult(req);
+const verifyAccessToken = async (request: Request, res: Response) => {
+  const req = request as RequestServer;
 
-//   if (!resultValidator.isEmpty()) {
-//     errors = resultValidator.array().map((data) => data.msg);
+  try {
+    const accessToken = req.headers["x-access-token"]?.toString() || "";
 
-//     return res.status(400).json({
-//       status_code: 400,
-//       error_code: "INVALID_BODY_FIELDS",
-//       errors,
-//     });
-//   }
-//   try {
-//     const { email = undefined } = request.body;
+    let userFound = await req.firebase.getDocumentById(
+      USER_COLLECTION,
+      req.userId
+    );
 
-//     const userFound: SystemUser | null = await req.firebase.getOneDocument(
-//       SYSTEM_USER_COLLECTION,
-//       [["email", "==", email]]
-//     );
-//     if (!userFound) {
-//       return res.status(401).json({
-//         status_code: 401,
-//         error_code: "USER_NOT_FOUND",
-//         errors: ["Correo electrónico no válido"],
-//       });
-//     }
+    if (!userFound) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_NOT_FOUND",
+        errors: ["Usuario no existente"],
+      });
+    }
 
-//     if (userFound.verified == 1) {
-//       return res.status(400).json({
-//         status_code: 400,
-//         error_code: "VERIFIED_USER_ACCOUNT",
-//         errors: ["El usuario ya se encuentra verificado"],
-//       });
-//     }
+    if (!userFound.tokens) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "INVALID_TOKEN",
+        errors: ["Token inválido"],
+      });
+    }
 
-//     const token = jwt.sign(
-//       { id: userFound.id },
-//       config.JWT_SYS_VALIDATION_SECRET,
-//       {
-//         expiresIn: "15min",
-//       }
-//     );
-//     const link = `${config.HOST_ADMIN}/auth/verify/?token=${token}`;
+    const hasTokens = userFound.tokens?.some(
+      (token: UserToken) => token.access_token === accessToken
+    );
 
-//     const { id, ...rest } = userFound;
+    if (!hasTokens) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "INVALID_TOKEN",
+        errors: ["Token inválido"],
+      });
+    }
 
-//     await req.firebase.updateDocumentById(
-//       SYSTEM_USER_COLLECTION,
-//       userFound.id || "",
-//       {
-//         ...rest,
-//         access_token: "",
-//         refresh_token: "",
-//         validation_token: token,
-//         updated_date: generateUTCToLimaDate(),
-//       }
-//     );
+    if (userFound.verified === 0) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_NOT_VERIFIED",
+        errors: ["Cuenta aún no verificada, por favor valide su cuenta"],
+      });
+    }
 
-//     const template = templateEmailSystemRecoveryAccount({
-//       email: userFound.email,
-//       firstName: userFound.first_name,
-//       lastName: userFound.last_name,
-//       link,
-//     });
-//     const result = await sendMail(template, "system-user recovery-account");
-//     if (result.status_code !== 200) {
-//       return res.status(result.status_code).json({
-//         ...result,
-//       });
-//     }
-//     return res.status(200).json({
-//       ...result,
-//       message:
-//         "Correo enviado éxitosamente, recuerde que el link expirará en 15 min.",
-//     });
-//   } catch (error) {
-//     console.log("system-user recovery-account response - error", error);
-//     return res
-//       .status(500)
-//       .json({ status_code: 500, errors: ["Ocurrió un error desconocido"] });
-//   }
-// };
+    if (userFound.status === 0) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_NOT_ENABLED",
+        errors: ["El usuario está deshabilitado"],
+      });
+    }
 
-// const verifyAccount = async (request: Request, res: Response) => {
-//   const req = request as RequestServer;
+    const { access_token, refresh_token } = userFound.tokens?.find(
+      (token: UserToken) => token.access_token === accessToken
+    );
 
-//   const token = req.headers["x-access-token"]?.toString() || "";
-//   try {
-//     const userFound: SystemUser | null = await req.firebase.getOneDocument(
-//       SYSTEM_USER_COLLECTION,
-//       [
-//         [
-//           "validation_token",
-//           "==",
-//           token
-//         ]
-//       ]
-//     );
-//     if (!userFound) {
-//       return res.status(401).json({
-//         status_code: 401,
-//         error_code: "USER_NOT_FOUND",
-//         errors: ["Usuario no existente"],
-//       });
-//     }
+    userFound = req.firebase.cleanValuesDocument(userFound, [
+      "last_login",
+      "created_date",
+      "updated_date",
+      "password",
+      "status",
+      "tokens",
+      "token",
+    ]);
 
-//     if (userFound.id !== req.userId) {
-//       return res.status(401).json({
-//         status_code: 401,
-//         error_code: "INVALID_TOKEN",
-//         errors: ["Token inválido"],
-//       });
-//     }
+    return res.status(200).json({
+      status_code: 200,
+      data: {
+        user: userFound,
+        access_token: access_token,
+        refresh_token: refresh_token,
+      },
+      errors: [],
+    });
+  } catch (error) {
+    console.log("user verify-access-token response - error", error);
+    return res
+      .status(500)
+      .json({ status_code: 500, errors: ["Ocurrió un error desconocido"] });
+  }
+};
 
-//     if (userFound.verified == 1) {
-//       return res.status(400).json({
-//         status_code: 400,
-//         error_code: "VERIFIED_USER_ACCOUNT",
-//         errors: ["El usuario ya se encuentra verificado"],
-//       });
-//     }
+const recoveryAccount = async (request: Request, res: Response) => {
+  const req = request as RequestServer;
+  let errors: ErrorFormat[] = [];
+  const resultValidator = validationResult(req);
 
-//     const { id, ...rest } = userFound;
+  if (!resultValidator.isEmpty()) {
+    errors = resultValidator.array().map((data) => data.msg);
 
-//     await req.firebase.updateDocumentById(SYSTEM_USER_COLLECTION, id, {
-//       ...rest,
-//       access_token: "",
-//       refresh_token: "",
-//       validation_token: "",
-//       verified: 1,
-//       updated_date: generateUTCToLimaDate(),
-//     });
+    return res.status(400).json({
+      status_code: 400,
+      error_code: "INVALID_BODY_FIELDS",
+      errors,
+    });
+  }
+  try {
+    const { email = "" } = request.body;
 
-//     const link = `${config.HOST_ADMIN}/auth/login`;
+    const userFound: User | null = await req.firebase.getOneDocument(
+      USER_COLLECTION,
+      [["email", "==", email?.toLowerCase()]]
+    );
+    if (!userFound) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_NOT_FOUND",
+        errors: ["Correo electrónico no válido"],
+      });
+    }
 
-//     const template = templateEmailSystemVerifyAccount({
-//       email: userFound.email,
-//       firstName: userFound.first_name,
-//       lastName: userFound.last_name,
-//       link,
-//     });
+    if (userFound.verified == 1) {
+      return res.status(400).json({
+        status_code: 400,
+        error_code: "VERIFIED_USER_ACCOUNT",
+        errors: ["El usuario ya se encuentra verificado"],
+      });
+    }
 
-//     await sendMail(template, "system-user verify-account");
+    const token = jwt.sign(
+      { id: userFound.id },
+      config.JWT_USER_VALIDATION_SECRET,
+      {
+        expiresIn: "15min",
+      }
+    );
+    const link = `${config.HOST_CLIENT}/auth/verify/?token=${token}`;
 
-//     return res.status(200).json({
-//       status_code: 200,
-//       message: "La cuenta fue verificada",
-//       errors: [],
-//     });
-//   } catch (error) {
-//     console.log("system-user verify-account response - error", error);
-//     return res
-//       .status(500)
-//       .json({ status_code: 500, errors: ["Ocurrió un error desconocido"] });
-//   }
-// };
+    const { id, ...rest } = userFound;
 
-// const recoveryPassword = async (request: Request, res: Response) => {
-//   const req = request as RequestServer;
-//   let errors: ErrorFormat[] = [];
-//   const resultValidator = validationResult(req);
+    await req.firebase.updateDocumentById(USER_COLLECTION, id || "", {
+      ...rest,
+      token,
+      updated_date: generateUTCToLimaDate(),
+    });
 
-//   if (!resultValidator.isEmpty()) {
-//     errors = resultValidator.array().map((data) => data.msg);
+    const template = templateEmailUserRecoveryAccount({
+      email: userFound.email,
+      firstName: userFound.first_name,
+      lastName: userFound.last_name,
+      link,
+    });
+    const result = await sendMail(template, "user recovery-account");
+    if (result.status_code !== 200) {
+      return res.status(result.status_code).json({
+        ...result,
+      });
+    }
+    return res.status(200).json({
+      ...result,
+      message:
+        "Correo enviado éxitosamente, recuerde que el link expirará en 15 min.",
+    });
+  } catch (error) {
+    console.log("user recovery-account response - error", error);
+    return res
+      .status(500)
+      .json({ status_code: 500, errors: ["Ocurrió un error desconocido"] });
+  }
+};
 
-//     return res.status(400).json({
-//       status_code: 400,
-//       error_code: "INVALID_BODY_FIELDS",
-//       errors,
-//     });
-//   }
-//   try {
-//     const { email = undefined } = request.body;
+const verifyAccount = async (request: Request, res: Response) => {
+  const req = request as RequestServer;
 
-//     const userFound: SystemUser | null = await req.firebase.getOneDocument(
-//       SYSTEM_USER_COLLECTION,
-//       [["email", "==", email]]
-//     );
-//     if (!userFound) {
-//       return res.status(401).json({
-//         status_code: 401,
-//         error_code: "USER_NOT_FOUND",
-//         errors: ["Correo electrónico no válido"],
-//       });
-//     }
-//     const token = jwt.sign(
-//       { id: userFound.id },
-//       config.JWT_SYS_VALIDATION_SECRET,
-//       {
-//         expiresIn: "15min",
-//       }
-//     );
-//     const link = `${config.HOST_ADMIN}/auth/restore/?token=${token}`;
+  const token = req.headers["x-access-token"]?.toString() || "";
+  try {
+    const userFound: User | null = await req.firebase.getOneDocument(
+      USER_COLLECTION,
+      [["token", "==", token]]
+    );
+    if (!userFound) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_NOT_FOUND",
+        errors: ["Usuario no existente"],
+      });
+    }
 
-//     const { id, ...rest } = userFound;
+    if (userFound.id !== req.userId) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "INVALID_TOKEN",
+        errors: ["Token inválido"],
+      });
+    }
 
-//     await req.firebase.updateDocumentById(
-//       SYSTEM_USER_COLLECTION,
-//       userFound.id || "",
-//       {
-//         ...rest,
-//         access_token: "",
-//         refresh_token: "",
-//         validation_token: token,
-//         updated_date: generateUTCToLimaDate(),
-//       }
-//     );
+    if (userFound.verified == 1) {
+      return res.status(400).json({
+        status_code: 400,
+        error_code: "VERIFIED_USER_ACCOUNT",
+        errors: ["El usuario ya se encuentra verificado"],
+      });
+    }
 
-//     const template = templateEmailSystemRecoveryPassword({
-//       email: userFound.email,
-//       firstName: userFound.first_name,
-//       lastName: userFound.last_name,
-//       link,
-//     });
-//     const result = await sendMail(template, "system-user recovery-password");
-//     if (result.status_code !== 200) {
-//       return res.status(result.status_code).json({
-//         ...result,
-//       });
-//     }
-//     return res.status(200).json({
-//       ...result,
-//       message:
-//         "Correo enviado éxitosamente, recuerde que el link expirará en 15 min.",
-//     });
-//   } catch (error) {
-//     console.log("system-user recovery-password response - error", error);
-//     return res
-//       .status(500)
-//       .json({ status: 500, errors: ["Ocurrió un error desconocido"] });
-//   }
-// };
+    const { id, ...rest } = userFound;
 
-// const verifyPassword = async (request: Request, res: Response) => {
-//   const req = request as RequestServer;
+    await req.firebase.updateDocumentById(USER_COLLECTION, id, {
+      ...rest,
+      token: "",
+      verified: 1,
+      updated_date: generateUTCToLimaDate(),
+    });
 
-//   const token = req.headers["x-access-token"]?.toString() || "";
-//   try {
-//     const userFound: SystemUser | null = await req.firebase.getOneDocument(
-//       SYSTEM_USER_COLLECTION,
-//       [
-//         [
-//           "validation_token",
-//           "==",
-//           token
-//         ]
-//       ]
-//     );
-//     if (!userFound) {
-//       return res.status(401).json({
-//         status_code: 401,
-//         error_code: "USER_NOT_FOUND",
-//         errors: ["Usuario no existente"],
-//       });
-//     }
+    const link = `${config.HOST_ADMIN}/auth/login`;
 
-//     if (userFound.id !== req.userId) {
-//       return res.status(401).json({
-//         status_code: 401,
-//         error_code: "INVALID_TOKEN",
-//         errors: ["Token inválido"],
-//       });
-//     }
-//     return res.status(200).json({
-//       status_code: 200,
-//       message: "Token de recuperación válido",
-//       errors: [],
-//     });
-//   } catch (error) {
-//     console.log("system-user verify-password response - error", error);
-//     return res
-//       .status(500)
-//       .json({ status: 500, errors: ["Ocurrió un error desconocido"] });
-//   }
-// };
+    const template = templateEmailUserVerifyAccount({
+      email: userFound.email,
+      firstName: userFound.first_name,
+      lastName: userFound.last_name,
+      link,
+    });
 
-// const changePassword = async (request: Request, res: Response) => {
-//   const req = request as RequestServer;
+    await sendMail(template, "user verify-account");
 
-//   let errors: ErrorFormat[] = [];
-//   const resultValidator = validationResult(req);
+    return res.status(200).json({
+      status_code: 200,
+      message: "La cuenta fue verificada",
+      errors: [],
+    });
+  } catch (error) {
+    console.log("user verify-account response - error", error);
+    return res
+      .status(500)
+      .json({ status_code: 500, errors: ["Ocurrió un error desconocido"] });
+  }
+};
 
-//   if (!resultValidator.isEmpty()) {
-//     errors = resultValidator.array().map((data) => data.msg);
+const recoveryPassword = async (request: Request, res: Response) => {
+  const req = request as RequestServer;
+  let errors: ErrorFormat[] = [];
+  const resultValidator = validationResult(req);
 
-//     return res.status(400).json({
-//       status_code: 400,
-//       error_code: "INVALID_BODY_FIELDS",
-//       errors,
-//     });
-//   }
+  if (!resultValidator.isEmpty()) {
+    errors = resultValidator.array().map((data) => data.msg);
 
-//   try {
-//     const token = request.headers["x-access-token"]?.toString() || "";
+    return res.status(400).json({
+      status_code: 400,
+      error_code: "INVALID_BODY_FIELDS",
+      errors,
+    });
+  }
+  try {
+    const { email = "" } = request.body;
 
-//     const { new_password = undefined } = req.body;
+    const userFound: User | null = await req.firebase.getOneDocument(
+      USER_COLLECTION,
+      [["email", "==", email?.toLowerCase()]]
+    );
+    if (!userFound) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_NOT_FOUND",
+        errors: ["Correo electrónico no válido"],
+      });
+    }
+    const token = jwt.sign(
+      { id: userFound.id },
+      config.JWT_USER_VALIDATION_SECRET,
+      {
+        expiresIn: "15min",
+      }
+    );
+    const link = `${config.HOST_CLIENT}/auth/restore/?token=${token}`;
 
-//     const userFound: SystemUser | null = await req.firebase.getOneDocument(
-//       SYSTEM_USER_COLLECTION,
-//       [
-//         [
-//           "validation_token",
-//           "==",
-//           token
-//         ]
-//       ]
-//     );
-//     if (!userFound) {
-//       return res.status(401).json({
-//         status_code: 401,
-//         error_code: "USER_NOT_FOUND",
-//         errors: ["Usuario no existente"],
-//       });
-//     }
+    const { id, ...rest } = userFound;
 
-//     if (userFound.id !== req.userId) {
-//       return res.status(401).json({
-//         status_code: 401,
-//         error_code: "INVALID_TOKEN",
-//         errors: ["Token inválido"],
-//       });
-//     }
+    await req.firebase.updateDocumentById(USER_COLLECTION, id || "", {
+      ...rest,
+      token,
+      updated_date: generateUTCToLimaDate(),
+    });
 
-//     const hash = await encryptPassword(new_password);
+    const template = templateEmailUserRecoveryPassword({
+      email: userFound.email,
+      firstName: userFound.first_name,
+      lastName: userFound.last_name,
+      link,
+    });
+    const result = await sendMail(template, "user recovery-password");
+    if (result.status_code !== 200) {
+      return res.status(result.status_code).json({
+        ...result,
+      });
+    }
+    return res.status(200).json({
+      ...result,
+      message:
+        "Correo enviado éxitosamente, recuerde que el link expirará en 15 min.",
+    });
+  } catch (error) {
+    console.log("user recovery-password response - error", error);
+    return res
+      .status(500)
+      .json({ status: 500, errors: ["Ocurrió un error desconocido"] });
+  }
+};
 
-//     const { id, ...rest } = userFound;
+const verifyPassword = async (request: Request, res: Response) => {
+  const req = request as RequestServer;
 
-//     await req.firebase.updateDocumentById(SYSTEM_USER_COLLECTION, id, {
-//       ...rest,
-//       access_token: "",
-//       refresh_token: "",
-//       validation_token: "",
-//       password: hash,
-//       updated_date: generateUTCToLimaDate(),
-//     });
+  const token = req.headers["x-access-token"]?.toString() || "";
+  try {
+    const userFound: User | null = await req.firebase.getOneDocument(
+      USER_COLLECTION,
+      [["token", "==", token]]
+    );
+    if (!userFound) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_NOT_FOUND",
+        errors: ["Usuario no existente"],
+      });
+    }
 
-//     const link = `${config.HOST_ADMIN}/auth/login`;
+    if (userFound.id !== req.userId) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "INVALID_TOKEN",
+        errors: ["Token inválido"],
+      });
+    }
+    return res.status(200).json({
+      status_code: 200,
+      message: "Token de recuperación válido",
+      errors: [],
+    });
+  } catch (error) {
+    console.log("user verify-password response - error", error);
+    return res
+      .status(500)
+      .json({ status: 500, errors: ["Ocurrió un error desconocido"] });
+  }
+};
 
-//     const template = templateEmailSystemChangePassword({
-//       email: userFound.email,
-//       firstName: userFound.first_name,
-//       lastName: userFound.last_name,
-//       link,
-//     });
+const changePassword = async (request: Request, res: Response) => {
+  const req = request as RequestServer;
 
-//     await sendMail(template, "system-user change-password");
+  let errors: ErrorFormat[] = [];
+  const resultValidator = validationResult(req);
 
-//     return res.status(200).json({
-//       status_code: 200,
-//       message: "contraseña actualizada",
-//       errors: [],
-//     });
-//   } catch (error) {
-//     console.log("system-user change-password response - error", error);
-//     return res
-//       .status(500)
-//       .json({ status: 500, errors: ["Ocurrió un error desconocido"] });
-//   }
-// };
+  if (!resultValidator.isEmpty()) {
+    errors = resultValidator.array().map((data) => data.msg);
+
+    return res.status(400).json({
+      status_code: 400,
+      error_code: "INVALID_BODY_FIELDS",
+      errors,
+    });
+  }
+
+  try {
+    const token = request.headers["x-access-token"]?.toString() || "";
+
+    const { new_password = undefined } = req.body;
+
+    const userFound: User | null = await req.firebase.getOneDocument(
+      USER_COLLECTION,
+      [["token", "==", token]]
+    );
+    if (!userFound) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_NOT_FOUND",
+        errors: ["Usuario no existente"],
+      });
+    }
+
+    if (userFound.id !== req.userId) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "INVALID_TOKEN",
+        errors: ["Token inválido"],
+      });
+    }
+
+    const hash = await encryptPassword(new_password);
+
+    const { id, ...rest } = userFound;
+
+    await req.firebase.updateDocumentById(USER_COLLECTION, id, {
+      ...rest,
+      token: "",
+      password: hash,
+      updated_date: generateUTCToLimaDate(),
+    });
+
+    // const link = `${config.HOST_CLIENT}/auth/login`;
+
+    const template = templateEmailUserChangePassword({
+      email: userFound.email,
+      firstName: userFound.first_name,
+      lastName: userFound.last_name,
+      // link,
+    });
+
+    await sendMail(template, "user change-password");
+
+    return res.status(200).json({
+      status_code: 200,
+      message: "contraseña actualizada",
+      errors: [],
+    });
+  } catch (error) {
+    console.log("user change-password response - error", error);
+    return res
+      .status(500)
+      .json({ status: 500, errors: ["Ocurrió un error desconocido"] });
+  }
+};
+
+const logout = async (request: Request, res: Response) => {
+  const req = request as RequestServer;
+
+  try {
+    const accessToken = req.headers["x-access-token"]?.toString() || "";
+
+    let userFound = await req.firebase.getDocumentById(
+      USER_COLLECTION,
+      req.userId
+    );
+
+    if (!userFound) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_NOT_FOUND",
+        errors: ["Usuario no existente"],
+      });
+    }
+
+    if (!userFound.tokens || userFound.tokens?.length === 0) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "INVALID_TOKEN",
+        errors: ["Token inválido"],
+      });
+    }
+
+    const hasAccessToken = userFound?.tokens?.some(
+      (token: UserToken) => token.access_token === accessToken
+    );
+
+    if (!hasAccessToken) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "INVALID_TOKEN",
+        errors: ["Token inválido"],
+      });
+    }
+
+    const tokens = userFound.tokens.filter(
+      (token: UserToken) => token.access_token !== accessToken
+    );
+
+    const { id, ...rest } = userFound;
+
+    await req.firebase.updateDocumentById(USER_COLLECTION, id, {
+      ...rest,
+      tokens,
+    });
+
+    return res.status(200).json({
+      status_code: 200,
+      message: "Sesión cerrada",
+      errors: [],
+    });
+  } catch (error) {
+    console.log("user logout response - error", error);
+    return res
+      .status(500)
+      .json({ status_code: 500, errors: ["Ocurrió un error desconocido"] });
+  }
+};
 
 export {
   login,
+  createUser,
   renewToken,
-  // recoveryAccount,
-  // verifyAccount,
-  // recoveryPassword,
-  // verifyPassword,
-  // changePassword,
+  verifyAccessToken,
+  recoveryAccount,
+  verifyAccount,
+  recoveryPassword,
+  verifyPassword,
+  changePassword,
+  logout,
 };

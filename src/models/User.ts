@@ -26,7 +26,6 @@ export type User = {
 
 export type UserToken = {
   // id?: string;
-  // user?: User;
   access_token: string;
   refresh_token: string;
 };

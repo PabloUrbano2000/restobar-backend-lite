@@ -160,10 +160,9 @@ export const templateEmailUserWelcome = ({
           <p style="margin:20px 0 0; font-size:13px;">Recuerda que este paso es importante para que puedas empezar a realizar tus pedidos.</p>
           `
             : `
-          <p style="margin:20px 0 0; font-size:13px;">Desde ahora ya puedes empezar a realizar tus pedidos. No te olvides de iniciar sesión para comenzar con primera orden :).</p>
+          <p style="margin:20px 0 0; font-size:13px;">Desde ahora ya puedes empezar a realizar tus pedidos. No te olvides de iniciar sesión en la app para comenzar con primera orden :).</p>
           `
         }
-        <p style="margin:20px 0 0; font-size:13px;">Recuerda que este paso es importante para que puedas empezar a realizar tus pedidos.</p>
         <p style="margin:20px 0 0;font-size: 13px;font-weight: 600;font-style:italic;">"Por favor, no responder. Este es un correo automático, por lo tanto, no será revisado."</p>
         <p style="margin-top: 40px; font-weight: 600;font-size: 13px;">${new Date().getFullYear()} @ RESTOBAR SAC.-<span style="font-weight:500;"> Equipo de soporte</span></p>`,
   };
@@ -208,7 +207,7 @@ export const templateEmailUserVerifyAccount = ({
         ? `${firstName.toUpperCase()} ${lastName.toUpperCase()}`
         : email.toUpperCase()
     },</p>
-    <p style="margin:15px 0 0; font-size:13px;">Tu cuenta fue verificada con éxito, por favor ingresa  a este enlace <a style="" href="${link}">${link}</a> para iniciar sesión.</p>
+    <p style="margin:15px 0 0; font-size:13px;">Tu cuenta fue verificada con éxito, por favor vuelva a ingresar a la app para iniciar sesión.</p>
     <br />
     <p style="margin:20px 0 0;font-size: 13px;font-weight: 600;font-style:italic;">"Por favor, no responder. Este es un correo automático, por lo tanto, no será revisado."</p>
     <p style="margin-top: 40px; font-weight: 600;font-size: 13px;">${new Date().getFullYear()} @ RESTOBAR SAC.-<span style="font-weight:500;"> Equipo de soporte</span></p>`,
@@ -250,7 +249,7 @@ export const templateEmailUserChangePassword = ({
         <p style="margin:0; font-size:14px;">Hola ${
           firstName && lastName ? `${firstName} ${lastName}` : email
         },</p>
-        <p style="margin:15px 0 0; font-size:13px;">Tu contraseña fue actualizada, por favor ingresa <a style="" href="${link}">aquí</a> para iniciar sesión.</p>
+        <p style="margin:15px 0 0; font-size:13px;">Tu contraseña fue actualizada, por favor vuelva a ingresar a la app para iniciar sesión.</p>
         <br />
         <p style="margin:20px 0 0;font-size: 13px;font-weight: 600;font-style:italic;">"Por favor, no responder. Este es un correo automático, por lo tanto, no será revisado."</p>
         <p style="margin-top: 40px; font-weight: 600;font-size: 13px;">${new Date().getFullYear()} @ RESTOBAR SAC.-<span style="font-weight:500;"> Equipo de soporte</span></p>`,

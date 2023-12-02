@@ -14,7 +14,7 @@ export type SystemUser = {
   user_creator?: SystemUser | null;
   account_suspension_day?: Date | string;
   access_token?: string;
-  last_login?: string;
+  last_login?: Date | string;
   refresh_token?: string;
   validation_token?: string;
   created_date?: Date | string;

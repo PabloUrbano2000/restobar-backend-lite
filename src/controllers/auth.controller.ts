@@ -827,7 +827,135 @@ const changePassword = async (request: Request, res: Response) => {
   }
 };
 
-const logout = async (request: Request, res: Response) => {
+const logoutAllSessionsExceptCurrentOne = async (
+  request: Request,
+  res: Response
+) => {
+  const req = request as RequestServer;
+
+  try {
+    const accessToken = req.headers["x-access-token"]?.toString() || "";
+
+    let userFound = await req.firebase.getDocumentById(
+      USER_COLLECTION,
+      req.userId
+    );
+
+    if (!userFound) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_NOT_FOUND",
+        errors: ["Usuario no existente"],
+      });
+    }
+
+    if (!userFound.tokens || userFound.tokens?.length === 0) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "INVALID_TOKEN",
+        errors: ["Token inválido"],
+      });
+    }
+
+    const hasAccessToken = userFound?.tokens?.some(
+      (token: UserToken) => token.access_token === accessToken
+    );
+
+    if (!hasAccessToken) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "INVALID_TOKEN",
+        errors: ["Token inválido"],
+      });
+    }
+
+    const tokens = userFound.tokens.filter(
+      (token: UserToken) => token.access_token === accessToken
+    );
+
+    const { id, ...rest } = userFound;
+
+    await req.firebase.updateDocumentById(USER_COLLECTION, id, {
+      ...rest,
+      tokens,
+    });
+
+    return res.status(200).json({
+      status_code: 200,
+      message: "Todas las sesiones fueron cerradas excepto la actual",
+      errors: [],
+    });
+  } catch (error) {
+    console.log(
+      "user logout-all-sessions-except-current-one response - error",
+      error
+    );
+    return res
+      .status(500)
+      .json({ status_code: 500, errors: ["Ocurrió un error desconocido"] });
+  }
+};
+
+const logoutAllSessions = async (request: Request, res: Response) => {
+  const req = request as RequestServer;
+
+  try {
+    const accessToken = req.headers["x-access-token"]?.toString() || "";
+
+    let userFound = await req.firebase.getDocumentById(
+      USER_COLLECTION,
+      req.userId
+    );
+
+    if (!userFound) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_NOT_FOUND",
+        errors: ["Usuario no existente"],
+      });
+    }
+
+    if (!userFound.tokens || userFound.tokens?.length === 0) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "INVALID_TOKEN",
+        errors: ["Token inválido"],
+      });
+    }
+
+    const hasAccessToken = userFound?.tokens?.some(
+      (token: UserToken) => token.access_token === accessToken
+    );
+
+    if (!hasAccessToken) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "INVALID_TOKEN",
+        errors: ["Token inválido"],
+      });
+    }
+
+    const { id, ...rest } = userFound;
+
+    await req.firebase.updateDocumentById(USER_COLLECTION, id, {
+      ...rest,
+      tokens: [],
+    });
+
+    return res.status(200).json({
+      status_code: 200,
+      message: "Todas las sesiones fueron cerradas",
+      errors: [],
+    });
+  } catch (error) {
+    console.log("user logout-all-sessions response - error", error);
+    return res
+      .status(500)
+      .json({ status_code: 500, errors: ["Ocurrió un error desconocido"] });
+  }
+};
+
+const logoutCurrentSession = async (request: Request, res: Response) => {
   const req = request as RequestServer;
 
   try {
@@ -883,7 +1011,7 @@ const logout = async (request: Request, res: Response) => {
       errors: [],
     });
   } catch (error) {
-    console.log("user logout response - error", error);
+    console.log("user logout-current-session response - error", error);
     return res
       .status(500)
       .json({ status_code: 500, errors: ["Ocurrió un error desconocido"] });
@@ -900,5 +1028,7 @@ export {
   recoveryPassword,
   verifyPassword,
   changePassword,
-  logout,
+  logoutAllSessions,
+  logoutAllSessionsExceptCurrentOne,
+  logoutCurrentSession,
 };

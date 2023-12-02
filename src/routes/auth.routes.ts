@@ -9,7 +9,9 @@ import {
   verifyPassword,
   recoveryPassword,
   changePassword,
-  logout,
+  logoutAllSessions,
+  logoutAllSessionsExceptCurrentOne,
+  logoutCurrentSession,
   createUser,
 } from "../controllers/auth.controller";
 import {
@@ -171,6 +173,12 @@ router.post(
   changePassword
 );
 
-router.post("/logout", [verifyUserAccessToken], logout);
+router.post("/logout/current", [verifyUserAccessToken], logoutCurrentSession);
+router.post("/logout/all", [verifyUserAccessToken], logoutAllSessions);
+router.post(
+  "/logout/all/except-current",
+  [verifyUserAccessToken],
+  logoutAllSessionsExceptCurrentOne
+);
 
 export default router;

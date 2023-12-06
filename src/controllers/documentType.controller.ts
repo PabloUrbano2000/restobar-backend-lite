@@ -56,7 +56,7 @@ const getList = async (request: Request, res: Response) => {
   }
 };
 
-const getPublicList = async (request: Request, res: Response) => {
+const getClientList = async (request: Request, res: Response) => {
   const req = request as RequestServer;
 
   try {
@@ -95,4 +95,4 @@ const getPublicList = async (request: Request, res: Response) => {
   }
 };
 
-export { getList, getPublicList };
+export { getList, getClientList };

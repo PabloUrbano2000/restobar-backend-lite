@@ -16,8 +16,7 @@ import authRouter from "../routes/auth.routes";
 import systemUserRouter from "../routes/systemUser.routes";
 import roleRouter from "../routes/role.routes";
 import productRouter from "../routes/product.routes";
-
-import publicRouter from "../routes/public.routes";
+import profileRouter from "../routes/profile.routes";
 
 import { RequestServer } from "../interfaces/Request";
 
@@ -64,22 +63,20 @@ class Server {
     this.app.use("/api/admin/system-user", systemUserRouter);
     this.app.use("/api/admin/role", roleRouter);
     this.app.use("/api/admin/product", productRouter);
+    this.app.use("/api/admin/profile", profileRouter);
 
     // enrutamientos de cliente
     this.app.use("/api/client/auth", authRouter);
 
     // listados con token de cliente
     this.app.use("/api/client", clientRouter);
-
-    // rutas públicas
-    // this.app.use("/api/public", publicRouter);
   }
 
   execute() {
     // Inicializar Middlewares
     this.middlewares();
 
-    this.app.get("/", (req, res) => {
+    this.app.get("/", (_, res) => {
       return res.json({
         message: "Bienvenido a la api de restobar :)",
       });

@@ -1,11 +1,12 @@
 import { Router } from "express";
-import { getPublicList as getCategoryList } from "../controllers/category.controller";
-import { getPublicList as getGenderList } from "../controllers/gender.controller";
-import { getPublicList as getDocumentTypeList } from "../controllers/documentType.controller";
-import { getPublicList as getReceptionList } from "../controllers/reception.controller";
+import { getClientList as getCategoryList } from "../controllers/category.controller";
+import { getClientList as getGenderList } from "../controllers/gender.controller";
+import { getClientList as getDocumentTypeList } from "../controllers/documentType.controller";
+import { getClientList as getReceptionList } from "../controllers/reception.controller";
+import { getClientProfile } from "../controllers/profile.controller";
 import {
-  getPublicList as getProductList,
-  getPublicProduct,
+  getClientList as getProductList,
+  getClientProduct,
 } from "../controllers/product.controller";
 import { verifyUserAccessToken } from "../middlewares";
 import { body } from "express-validator";
@@ -32,7 +33,9 @@ router.post(
       .isString()
       .withMessage("El id debe ser una cadena"),
   ],
-  getPublicProduct
+  getClientProduct
 );
+
+router.post("/profile/get", [verifyUserAccessToken], getClientProfile);
 
 export default router;

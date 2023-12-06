@@ -721,7 +721,7 @@ const availableProduct = async (request: Request, res: Response) => {
   }
 };
 
-const getPublicList = async (request: Request, res: Response) => {
+const getClientList = async (request: Request, res: Response) => {
   const req = request as RequestServer;
 
   let { category = "", limit = 20, offset = 0 } = req.body;
@@ -971,7 +971,7 @@ const deleteProductImage = async (request: Request, res: Response) => {
   }
 };
 
-const getPublicProduct = async (request: Request, res: Response) => {
+const getClientProduct = async (request: Request, res: Response) => {
   const req = request as RequestServer;
   let errors: ErrorFormat[] = [];
   const resultValidator = validationResult(req);
@@ -1052,6 +1052,6 @@ export {
   enableProduct,
   unavailableProduct,
   availableProduct,
-  getPublicList,
-  getPublicProduct,
+  getClientList,
+  getClientProduct,
 };

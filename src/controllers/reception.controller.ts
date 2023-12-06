@@ -631,7 +631,7 @@ const availableReception = async (request: Request, res: Response) => {
   }
 };
 
-const getPublicList = async (request: Request, res: Response) => {
+const getClientList = async (request: Request, res: Response) => {
   const req = request as RequestServer;
 
   try {
@@ -676,5 +676,5 @@ export {
   enableReception,
   unavailableReception,
   availableReception,
-  getPublicList,
+  getClientList,
 };

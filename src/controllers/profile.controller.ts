@@ -1,31 +1,34 @@
 import { Request, Response } from "express";
 import { RequestServer } from "../interfaces/Request";
-import { ErrorFormat } from "../interfaces/Error";
-import { validationResult } from "express-validator";
-import { SYSTEM_USER_COLLECTION } from "../models/SystemUser";
+import { SYSTEM_USER_COLLECTION, USER_COLLECTION } from "../models/Collections";
+import { UserToken } from "../models/User";
 
 const getSystemUserProfile = async (request: Request, res: Response) => {
   const req = request as RequestServer;
-  let errors: ErrorFormat[] = [];
-  const resultValidator = validationResult(req);
-
-  if (!resultValidator.isEmpty()) {
-    errors = resultValidator.array().map((data) => data.msg);
-
-    return res.status(400).json({
-      status_code: 400,
-      error_code: "INVALID_BODY_FIELDS",
-      errors,
-    });
-  }
 
   try {
-    const { id = "" } = req.body;
+    const accessToken = req.headers["x-access-token"]?.toString() || "";
 
     const profileFound = await req.firebase.getDocumentById(
       SYSTEM_USER_COLLECTION,
-      id
+      req.userId
     );
+
+    if (!profileFound) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_NOT_FOUND",
+        errors: ["Usuario no existente"],
+      });
+    }
+
+    if (profileFound.access_token !== accessToken) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "INVALID_TOKEN",
+        errors: ["Token inválido"],
+      });
+    }
 
     if (!profileFound) {
       return res.status(401).json({
@@ -96,11 +99,90 @@ const getSystemUserProfile = async (request: Request, res: Response) => {
   }
 };
 
+const getClientProfile = async (request: Request, res: Response) => {
+  const req = request as RequestServer;
 
-const getClientProfile = async(request: Request, res: Response)=> {
+  try {
+    const accessToken = req.headers["x-access-token"]?.toString() || "";
 
-    
+    const profileFound = await req.firebase.getDocumentById(
+      USER_COLLECTION,
+      req.userId
+    );
 
-}
+    if (!profileFound) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "PROFILE_NOT_FOUND",
+        errors: ["Perfil no fue encontrado"],
+      });
+    }
 
-export { getSystemUserProfile };
+    if (!profileFound.tokens || profileFound.tokens?.length === 0) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "INVALID_TOKEN",
+        errors: ["Token inválido"],
+      });
+    }
+
+    const hasAccessToken = profileFound?.tokens?.some(
+      (token: UserToken) => token.access_token === accessToken
+    );
+
+    if (!hasAccessToken) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "INVALID_TOKEN",
+        errors: ["Token inválido"],
+      });
+    }
+
+    if (profileFound.verified === 0) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "PROFILE_NOT_VERIFIED",
+        errors: ["El perfil aún no está verificado"],
+      });
+    }
+
+    if (profileFound.status === 0) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "PROFILE_NOT_ENABLED",
+        errors: ["El perfil está deshabilitado"],
+      });
+    }
+
+    profileFound.created_date = new Date(
+      profileFound.created_date?.seconds * 1000
+    );
+
+    const newProfile = req.firebase.cleanValuesDocument(profileFound, [
+      "last_login",
+      "updated_date",
+      "password",
+      "status",
+      "tokens",
+      "token",
+    ]);
+
+    return res.status(200).json({
+      status_code: 200,
+      data: {
+        profile: {
+          ...newProfile,
+          has_multi_sessions: !!(profileFound.tokens.length > 1),
+        },
+      },
+      errors: [],
+    });
+  } catch (error) {
+    console.log("profile get-user-profile response - error", error);
+    return res
+      .status(500)
+      .json({ status_code: 500, errors: ["Ocurrió un error desconocido"] });
+  }
+};
+
+export { getSystemUserProfile, getClientProfile };

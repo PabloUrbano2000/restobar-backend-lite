@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { RequestServer } from "../interfaces/Request";
 import { FieldPath, WhereFilterOp } from "firebase/firestore";
-import { SYSTEM_USER_COLLECTION, SystemUser } from "../models/SystemUser";
+import { SYSTEM_USER_COLLECTION } from "../models/SystemUser";
 import { ErrorFormat } from "../interfaces/Error";
 import { validationResult } from "express-validator";
 import { ROLE_COLLECTION } from "../models/Role";
@@ -16,7 +16,7 @@ import { Setting } from "../models/Entities";
 const getList = async (request: Request, res: Response) => {
   const req = request as RequestServer;
 
-  let { first_name = undefined, last_name = undefined } = req.query;
+  let { first_name = undefined, last_name = undefined } = req.body;
 
   const filter: [
     fieldPath: string | FieldPath,
@@ -169,7 +169,13 @@ const createSystemUser = async (request: Request, res: Response) => {
   }
 
   try {
-    const { first_name = "", last_name = "", email = "", role = "" } = req.body;
+    const {
+      first_name = "",
+      last_name = "",
+      email = "",
+      role = "",
+      status = undefined,
+    } = req.body;
 
     const isExistUserByEmail = await req.firebase.getOneDocument(
       SYSTEM_USER_COLLECTION,
@@ -225,6 +231,12 @@ const createSystemUser = async (request: Request, res: Response) => {
       enableVerify = 1;
     }
 
+    let dataAux: any = {};
+
+    if (typeof status === "number") {
+      dataAux.status = status;
+    }
+
     const result = await req.firebase.insertDocument(SYSTEM_USER_COLLECTION, {
       first_name: first_name.trim(),
       last_name: last_name.trim(),
@@ -238,6 +250,7 @@ const createSystemUser = async (request: Request, res: Response) => {
       refresh_token: "",
       validation_token: "",
       role: roleInstance,
+      ...dataAux,
       created_date: generateUTCToLimaDate(),
     });
 
@@ -339,6 +352,7 @@ const updateSystemUser = async (request: Request, res: Response) => {
       first_name = undefined,
       last_name = undefined,
       role = undefined,
+      status = undefined,
     } = req.body;
 
     let dataAux: any = {};
@@ -346,7 +360,8 @@ const updateSystemUser = async (request: Request, res: Response) => {
     if (
       first_name === undefined &&
       last_name === undefined &&
-      role === undefined
+      role === undefined &&
+      status === undefined
     ) {
       return res.status(400).json({
         status_code: 400,
@@ -365,6 +380,10 @@ const updateSystemUser = async (request: Request, res: Response) => {
     }
     if (last_name) {
       dataAux.last_name = last_name;
+    }
+
+    if (typeof status === "number") {
+      dataAux.status = status;
     }
 
     if (!userFound) {

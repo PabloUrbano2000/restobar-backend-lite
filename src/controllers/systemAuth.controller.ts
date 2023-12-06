@@ -77,14 +77,14 @@ const login = async (request: Request, res: Response) => {
     }
 
     const token = jwt.sign({ id: userFound.id }, config.JWT_SYS_SECRET, {
-      expiresIn: 86400, //24 horas
+      expiresIn: "24h", //24 horas
     });
 
     const refreshToken = jwt.sign(
       { id: userFound.id },
       config.JWT_SYS_REFRESH_SECRET,
       {
-        expiresIn: 86400, //24 horas
+        expiresIn: "24h", //24 horas
       }
     );
 
@@ -207,7 +207,7 @@ const renewToken = async (request: Request, res: Response) => {
       { id: userFound.id },
       config.JWT_SYS_SECRET,
       {
-        expiresIn: 86400,
+        expiresIn: "24h",
       }
     );
 
@@ -215,7 +215,7 @@ const renewToken = async (request: Request, res: Response) => {
       { id: userFound.id },
       config.JWT_SYS_REFRESH_SECRET,
       {
-        expiresIn: 86400,
+        expiresIn: "24h",
       }
     );
 

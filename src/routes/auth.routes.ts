@@ -30,12 +30,8 @@ router.post(
       .notEmpty()
       .withMessage("El correo electrónico es obligatorio")
       .isEmail()
-      .withMessage("Correo electrónico con formato inválido")
-      .escape(),
-    body("password")
-      .notEmpty()
-      .withMessage("La contraseña es obligatoria")
-      .escape(),
+      .withMessage("Correo electrónico con formato inválido"),
+    body("password").notEmpty().withMessage("La contraseña es obligatoria"),
   ],
   login
 );
@@ -119,8 +115,7 @@ router.post(
       .notEmpty()
       .withMessage("El correo electrónico es obligatorio")
       .isEmail()
-      .withMessage("Correo electrónico con formato inválido")
-      .escape(),
+      .withMessage("Correo electrónico con formato inválido"),
   ],
   recoveryAccount
 );
@@ -138,8 +133,7 @@ router.post(
       .notEmpty()
       .withMessage("El correo electrónico es obligatorio")
       .isEmail()
-      .withMessage("Correo electrónico con formato inválido")
-      .escape(),
+      .withMessage("Correo electrónico con formato inválido"),
   ],
   recoveryPassword
 );
@@ -153,8 +147,7 @@ router.post(
       .notEmpty()
       .withMessage("La nueva contraseña es obligatoria")
       .isLength({ min: 8, max: 16 })
-      .withMessage("La nueva contraseña debe tener entre 8 a 16 caracteres")
-      .escape(),
+      .withMessage("La nueva contraseña debe tener entre 8 a 16 caracteres"),
     body("confirm_password")
       .notEmpty()
       .withMessage("La confirmación de la contraseña es obligatoria")
@@ -162,7 +155,7 @@ router.post(
       .withMessage(
         "La confirmación de contraseña debe tener entre 8 a 16 caracteres"
       )
-      .escape()
+
       .custom((data, { req }) => {
         if (data && data !== req.body.new_password) {
           throw Error("Las contraseñas deben ser idénticas");

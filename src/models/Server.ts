@@ -15,6 +15,7 @@ import clientRouter from "../routes/client.routes";
 import authRouter from "../routes/auth.routes";
 import systemUserRouter from "../routes/systemUser.routes";
 import roleRouter from "../routes/role.routes";
+import productRouter from "../routes/product.routes";
 
 import publicRouter from "../routes/public.routes";
 
@@ -62,6 +63,7 @@ class Server {
     this.app.use("/api/admin/reception", receptionRouter);
     this.app.use("/api/admin/system-user", systemUserRouter);
     this.app.use("/api/admin/role", roleRouter);
+    this.app.use("/api/admin/product", productRouter);
 
     // enrutamientos de cliente
     this.app.use("/api/client/auth", authRouter);

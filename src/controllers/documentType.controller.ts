@@ -9,7 +9,7 @@ import { FieldPath, WhereFilterOp } from "firebase/firestore";
 const getList = async (request: Request, res: Response) => {
   const req = request as RequestServer;
 
-  let { q = "" } = req.query;
+  let { operation = "" } = req.body;
 
   const filter: [
     fieldPath: string | FieldPath,
@@ -17,10 +17,15 @@ const getList = async (request: Request, res: Response) => {
     value: unknown
   ][] = [];
 
-  q && typeof q == "string" ? (q = q.toUpperCase().trim()) : (q = "");
+  operation && typeof operation == "string"
+    ? (operation = operation.toUpperCase().trim())
+    : (operation = "");
 
-  if (q === OPERATION_TYPE.IDENTITY || q === OPERATION_TYPE.TRANSACTION) {
-    filter.push(["operation", "==", q]);
+  if (
+    operation === OPERATION_TYPE.IDENTITY ||
+    operation === OPERATION_TYPE.TRANSACTION
+  ) {
+    filter.push(["operation", "==", operation]);
   }
   try {
     const result = await req.firebase.getDocumentsByFilter(

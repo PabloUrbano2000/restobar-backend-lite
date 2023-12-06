@@ -26,12 +26,6 @@ import {
 
 import firebaseConfig from "./config";
 
-type Filter = {
-  field: string;
-  filter: WhereFilterOp;
-  value: string | number | boolean | Date | DocumentReference;
-};
-
 type PaginateData = {
   limit?: number;
   offset?: number;

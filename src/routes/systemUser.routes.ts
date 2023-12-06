@@ -73,6 +73,18 @@ router.post(
       .withMessage("El rol es obligatorio")
       .isString()
       .withMessage("El rol debe ser una cadena"),
+    body("status")
+      .optional()
+      .isNumeric()
+      .withMessage("El estado debe ser un número")
+      .custom((data: string) => {
+        if (data) {
+          if (!new RegExp(/^(0|1)$/).test(data.toString())) {
+            throw Error("Estado con formato inválido");
+          }
+        }
+        return true;
+      }),
   ],
   createSystemUser
 );
@@ -121,6 +133,18 @@ router.put(
       .withMessage("El rol debe ser una cadena")
       .isLength({ min: 2, max: 50 })
       .withMessage("El rol es inválido"),
+    body("status")
+      .optional()
+      .isNumeric()
+      .withMessage("El estado debe ser un número")
+      .custom((data: string) => {
+        if (data) {
+          if (!new RegExp(/^(0|1)$/).test(data.toString())) {
+            throw Error("Estado con formato inválido");
+          }
+        }
+        return true;
+      }),
   ],
   updateSystemUser
 );

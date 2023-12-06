@@ -13,7 +13,13 @@ const namesExtendRegex = new RegExp(
   /^([a-z0-9ñáéíóúü'\s-])+[a-z0-9ñáéíóúü]+$/,
   "i"
 );
-const descripRegex = new RegExp(/^(?!\s)[\wñáéíóúü@,.-\s]+$/, "i");
+
+const productExtendRegex = new RegExp(
+  /^([a-z0-9ñáéíóúü'\s-.\/])+[a-z0-9ñáéíóúü\s\.]+$/,
+  "i"
+);
+
+const descripRegex = new RegExp(/^(?!\s)[\wñáéíóúü@,.\/-\s]+$/, "i");
 
 // prettier-ignore
 const patternCard = [/\d/,/\d/,/\d/,/\d/,' ',/\d/,/\d/,/\d/,/\d/,' ',/\d/,/\d/,/\d/,/\d/,' ',/\d/,/\d/,/\d/,/\d/,]
@@ -62,6 +68,7 @@ export {
   mediumRegularExp,
   namesRegex,
   namesExtendRegex,
+  productExtendRegex,
   numberRegex,
   passRecomend,
   patterCvv,

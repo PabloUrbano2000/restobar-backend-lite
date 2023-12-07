@@ -119,9 +119,29 @@ const login = async (request: Request, res: Response) => {
       userFound.id || ""
     );
 
+    newUser.created_date = new Date(newUser.created_date?.seconds * 1000);
+
+    if (newUser.document_type) {
+      newUser.document_type = await req.firebase.getObjectByReference(
+        newUser.document_type
+      );
+
+      newUser.document_type = req.firebase.showValuesDocument(
+        newUser.document_type,
+        ["name", "id"]
+      );
+    }
+
+    if (newUser.gender) {
+      newUser.gender = await req.firebase.getObjectByReference(newUser.gender);
+      newUser.gender = req.firebase.showValuesDocument(newUser.gender, [
+        "name",
+        "id",
+      ]);
+    }
+
     newUser = req.firebase.cleanValuesDocument(newUser, [
       "last_login",
-      "created_date",
       "updated_date",
       "password",
       "status",
@@ -386,9 +406,29 @@ const renewToken = async (request: Request, res: Response) => {
     // buscamos el usuario por el id
     let newUser = await req.firebase.getDocumentById(USER_COLLECTION, id || "");
 
+    newUser.created_date = new Date(newUser.created_date?.seconds * 1000);
+
+    if (newUser.document_type) {
+      newUser.document_type = await req.firebase.getObjectByReference(
+        newUser.document_type
+      );
+
+      newUser.document_type = req.firebase.showValuesDocument(
+        newUser.document_type,
+        ["name", "id"]
+      );
+    }
+
+    if (newUser.gender) {
+      newUser.gender = await req.firebase.getObjectByReference(newUser.gender);
+      newUser.gender = req.firebase.showValuesDocument(newUser.gender, [
+        "name",
+        "id",
+      ]);
+    }
+
     newUser = req.firebase.cleanValuesDocument(newUser, [
       "last_login",
-      "created_date",
       "updated_date",
       "password",
       "status",
@@ -472,9 +512,31 @@ const verifyAccessToken = async (request: Request, res: Response) => {
       (token: UserToken) => token.access_token === accessToken
     );
 
+    userFound.created_date = new Date(userFound.created_date?.seconds * 1000);
+
+    if (userFound.document_type) {
+      userFound.document_type = await req.firebase.getObjectByReference(
+        userFound.document_type
+      );
+
+      userFound.document_type = req.firebase.showValuesDocument(
+        userFound.document_type,
+        ["name", "id"]
+      );
+    }
+
+    if (userFound.gender) {
+      userFound.gender = await req.firebase.getObjectByReference(
+        userFound.gender
+      );
+      userFound.gender = req.firebase.showValuesDocument(userFound.gender, [
+        "name",
+        "id",
+      ]);
+    }
+
     userFound = req.firebase.cleanValuesDocument(userFound, [
       "last_login",
-      "created_date",
       "updated_date",
       "password",
       "status",

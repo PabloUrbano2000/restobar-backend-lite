@@ -8,6 +8,7 @@ import {
 } from "./jwt";
 import { verifyPermissions } from "./autorization";
 import { fileExists, hasFileValidExtensions, hasFileValidSize } from "./file";
+import { isValidDocumentType } from "./identity";
 
 export {
   verifySysUserValidToken,
@@ -20,4 +21,5 @@ export {
   fileExists,
   hasFileValidExtensions,
   hasFileValidSize,
+  isValidDocumentType,
 };

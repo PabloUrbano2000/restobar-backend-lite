@@ -321,9 +321,7 @@ const updateProduct = async (request: Request, res: Response) => {
       );
 
       if (docs.length > 0) {
-        console.log(docs);
         const hasDuplicate = docs.some((doc: Product) => doc.id !== id);
-        console.log(hasDuplicate);
         if (hasDuplicate) {
           return res.status(401).json({
             status_code: 401,

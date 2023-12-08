@@ -9,10 +9,25 @@ import { User } from "./User";
  * 2: En Proceso
  * 3: Entregado | Cancelado
  */
-type OrderStatus = 0 | 1 | 2 | 3;
-type OrderType = "COMER EN LOCAL" | "PARA LLEVAR";
-type PaymentMethod = "AL CONTADO" | "VISA" | "MASTERCARD";
-type OrderChannel = "APP" | "PRESENCIAL";
+export enum OrderStatus {
+  "ANULLED" = 0,
+  "PENDING" = 1,
+  "IN_PROCESS" = 2,
+  "DEVOTED" = 3,
+}
+export enum OrderType {
+  "IN_LOCAL" = "COMER EN LOCAL",
+  "TAKEAWAY" = "PARA LLEVAR",
+}
+export enum PaymentMethod {
+  "CASH" = "AL CONTADO",
+  "VISA" = "VISA",
+  "MASTERCARD" = "MASTERCARD",
+}
+export enum OrderChannel {
+  "APP" = "APP",
+  "PRESENCIAL" = "PRESENCIAL",
+}
 
 export type Order = {
   id: string;
@@ -34,7 +49,7 @@ export type Order = {
   items: OrderDetail[];
 };
 
-type Delivered = 0 | 1;
+// type Delivered = 0 | 1;
 
 export type OrderDetail = {
   id: string;
@@ -42,7 +57,12 @@ export type OrderDetail = {
   product: Product;
   quantity: number;
   price_of_sale: number;
-  delivered: Delivered;
+  // delivered: Delivered;
+};
+
+export type OrderLine = {
+  product: string;
+  quantity: number;
 };
 
 export const ORDER_COLLECTION = "orders";

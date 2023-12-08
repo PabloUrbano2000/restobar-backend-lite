@@ -3,6 +3,7 @@ import { getClientList as getCategoryList } from "../controllers/category.contro
 import { getClientList as getGenderList } from "../controllers/gender.controller";
 import { getClientList as getDocumentTypeList } from "../controllers/documentType.controller";
 import { getClientList as getReceptionList } from "../controllers/reception.controller";
+import { createClientOrder } from "../controllers/order.controller";
 import {
   changePasswordUser,
   getClientProfile,
@@ -15,6 +16,13 @@ import {
 import { isValidDocumentType, verifyUserAccessToken } from "../middlewares";
 import { body } from "express-validator";
 import { cellphoneRegex, descripRegex, namesRegex } from "../utilities/regex";
+import {
+  OrderChannel,
+  OrderDetail,
+  OrderLine,
+  OrderType,
+  PaymentMethod,
+} from "../models/Order";
 
 const router = Router();
 
@@ -185,6 +193,109 @@ router.put(
       }),
   ],
   changePasswordUser
+);
+
+router.post(
+  "/order/register",
+  [
+    verifyUserAccessToken,
+    body("reception")
+      .notEmpty()
+      .withMessage("El id de la mesa es obligatorio")
+      .isString()
+      .withMessage("El id de la mesa debe ser una cadena"),
+    body("user_document_number")
+      .notEmpty()
+      .withMessage("El número de documento del cliente es obligatorio")
+      .isString()
+      .withMessage("El número de documento del cliente debe ser una cadena")
+      .isLength({ min: 8, max: 20 })
+      .withMessage(
+        "El número de documento del cliente debe tener entre 8 a 20 caracteres"
+      ),
+    body("order_type")
+      .notEmpty()
+      .withMessage("El tipo de orden es obligatorio")
+      .isString()
+      .withMessage("El tipo de orden debe ser una cadena")
+      .custom((data: string) => {
+        if (data) {
+          if (data !== OrderType.IN_LOCAL && data !== OrderType.TAKEAWAY) {
+            throw Error("Tipo de orden con formato inválido");
+          }
+        }
+        return true;
+      }),
+    body("payment_method")
+      .notEmpty()
+      .withMessage("El método de pago es obligatorio")
+      .isString()
+      .withMessage("El método de pago debe ser una cadena")
+      .custom((data: string) => {
+        if (data) {
+          if (
+            data !== PaymentMethod.CASH &&
+            data !== PaymentMethod.VISA &&
+            data !== PaymentMethod.MASTERCARD
+          ) {
+            throw Error("Método de pago con formato inválido");
+          }
+        }
+        return true;
+      }),
+    body("order_channel")
+      .notEmpty()
+      .withMessage("El canal de venta es obligatorio")
+      .isString()
+      .withMessage("El canal de venta debe ser una cadena")
+      .custom((data: string) => {
+        if (data) {
+          if (data !== OrderChannel.APP) {
+            throw Error("Canal de venta con formato inválido");
+          }
+        }
+        return true;
+      }),
+    body("items")
+      .notEmpty()
+      .withMessage("Los productos son obligatorios")
+      .isArray({
+        min: 1,
+        max: 10,
+      })
+      .withMessage(
+        "Debe haber mínimo un tipo de producto y máximo 10 por pedido"
+      )
+      .custom((data: OrderLine[]) => {
+        if (data?.length > 0) {
+          const auxData: string[] = [];
+          data.forEach((item) => {
+            if (!item.product || typeof item.product !== "string") {
+              throw Error("Item(s) con formato inválido");
+            }
+            if (
+              !item.quantity ||
+              typeof item.quantity !== "number" ||
+              item.quantity.toString().includes(".")
+            ) {
+              throw Error("Item(s) con formato inválido");
+            }
+            if (item.quantity > 10 || item.quantity < 1) {
+              throw Error("La cantidad mínima de un item es 1 y máximo 10");
+            }
+            if (auxData.includes(item.product)) {
+              throw Error(
+                "No se aceptan items con id's de productos duplicados"
+              );
+            } else {
+              auxData.push(item.product);
+            }
+          });
+        }
+        return true;
+      }),
+  ],
+  createClientOrder
 );
 
 export default router;

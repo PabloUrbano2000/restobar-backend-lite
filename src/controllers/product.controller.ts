@@ -203,7 +203,6 @@ const createProduct = async (request: Request, res: Response) => {
     );
 
     if (!categoryFound) {
-      console.log(category, categoryFound);
       return res.status(401).json({
         status_code: 401,
         error_code: "CATEGORY_NOT_FOUND",
@@ -789,7 +788,7 @@ const getClientList = async (request: Request, res: Response) => {
       ...result,
     });
   } catch (error) {
-    console.log("product get-public-list response - error", error);
+    console.log("product get-client-list response - error", error);
     return res
       .status(500)
       .json({ status_code: 500, errors: ["Ocurrió un error desconocido"] });
@@ -1032,7 +1031,7 @@ const getClientProduct = async (request: Request, res: Response) => {
       errors: [],
     });
   } catch (error) {
-    console.log("product get-public-product response - error", error);
+    console.log("product get-client-product response - error", error);
     return res
       .status(500)
       .json({ status_code: 500, errors: ["Ocurrió un error desconocido"] });

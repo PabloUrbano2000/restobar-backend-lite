@@ -275,7 +275,7 @@ const createUser = async (request: Request, res: Response) => {
 
     if (resEmail.status_code !== 200) {
       return res.status(resEmail.status_code).json({
-        ...result,
+        ...resEmail,
       });
     }
 

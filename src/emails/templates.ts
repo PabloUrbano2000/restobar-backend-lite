@@ -24,12 +24,12 @@ export const templateEmailSystemWelcome = ({
         ${
           isValidationEnable
             ? `
-          <p style="margin:15px 0 0; font-size:13px;">Por favor haz click <a style="" href="${link}">aquí</a> para verificar tu cuenta.</p>
+          <p style="margin:15px 0 0; font-size:13px;">Por favor haz clic <a style="" href="${link}">aquí</a> para verificar tu cuenta.</p>
           <p style="margin:20px 0 0; font-size:13px;">Este paso es importante para que puedas empezar a realizar tus deberes.</p>
           `
             : `
           <p style="margin:20px 0 0; font-size:13px;">Desde ahora ya puedes empezar a realizar tus deberes.</p>
-          <p style="margin:15px 0 0; font-size:13px;">Por favor haz click <a style="" href="${link}">aquí</a> para comenzar.</p>
+          <p style="margin:15px 0 0; font-size:13px;">Por favor haz clic <a style="" href="${link}">aquí</a> para comenzar.</p>
           `
         }
         <p style="margin:15px 0 0; font-size:13px;">Tu usuario y contraseña son:</p>
@@ -58,7 +58,7 @@ export const templateEmailSystemRecoveryAccount = ({
             ? `${firstName.toUpperCase()} ${lastName.toUpperCase()}`
             : email.toUpperCase()
         },</p>
-        <p style="margin:15px 0 0; font-size:13px;">Haz click <a style="" href="${link}">aquí</a> para verificar tu cuenta.</p>
+        <p style="margin:15px 0 0; font-size:13px;">Haz clic <a style="" href="${link}">aquí</a> para verificar tu cuenta.</p>
         <p style="margin:20px 0 0; font-size:13px;">Recuerda que este paso es importante para que puedas ingresar al sistema.</p>
         <p style="margin:20px 0 0;font-size: 13px;font-weight: 600;font-style:italic;">"Por favor, no responder. Este es un correo automático, por lo tanto, no será revisado."</p>
         <p style="margin-top: 40px; font-weight: 600;font-size: 13px;">${new Date().getFullYear()} @ RESTOBAR SAC.-<span style="font-weight:500;"> Equipo de soporte</span></p>`,
@@ -104,7 +104,7 @@ export const templateEmailSystemRecoveryPassword = ({
             ? `${firstName.toUpperCase()} ${lastName.toUpperCase()}`
             : email.toUpperCase()
         },</p>
-        <p style="margin:15px 0 0; font-size:13px;">Haz click <a style="" href="${link}">aquí</a> para restaurar tu contraseña.</p>
+        <p style="margin:15px 0 0; font-size:13px;">Haz clic <a style="" href="${link}">aquí</a> para restaurar tu contraseña.</p>
         <p style="margin:20px 0 0; font-size:13px;">Si no solicitaste cambiar tu contraseña has caso omiso a este mensaje.</p>
         <p style="margin:20px 0 0;font-size: 13px;font-weight: 600;font-style:italic;">"Por favor, no responder. Este es un correo automático, por lo tanto, no será revisado."</p>
         <p style="margin-top: 40px; font-weight: 600;font-size: 13px;">${new Date().getFullYear()} @ RESTOBAR SAC.-<span style="font-weight:500;"> Equipo de soporte</span></p>`,
@@ -156,7 +156,7 @@ export const templateEmailUserWelcome = ({
         ${
           isValidationEnable
             ? `
-          <p style="margin:15px 0 0; font-size:13px;">Por favor haz click <a style="" href="${link}">aquí</a> para verificar tu cuenta.</p>
+          <p style="margin:15px 0 0; font-size:13px;">Por favor haz clic <a style="" href="${link}">aquí</a> para verificar tu cuenta.</p>
           <p style="margin:20px 0 0; font-size:13px;">Recuerda que este paso es importante para que puedas empezar a realizar tus pedidos.</p>
           `
             : `
@@ -184,7 +184,7 @@ export const templateEmailUserRecoveryAccount = ({
             ? `${firstName.toUpperCase()} ${lastName.toUpperCase()}`
             : email.toUpperCase()
         },</p>
-        <p style="margin:15px 0 0; font-size:13px;">Por favor haz click <a style="" href="${link}">aquí</a> para verificar tu cuenta.</p>
+        <p style="margin:15px 0 0; font-size:13px;">Por favor haz clic <a style="" href="${link}">aquí</a> para verificar tu cuenta.</p>
         <p style="margin:20px 0 0; font-size:13px;">Recuerda que este paso es importante para que puedas empezar a realizar tus pedidos.</p>
         <p style="margin:20px 0 0;font-size: 13px;font-weight: 600;font-style:italic;">"Por favor, no responder. Este es un correo automático, por lo tanto, no será revisado."</p>
         <p style="margin-top: 40px; font-weight: 600;font-size: 13px;">${new Date().getFullYear()} @ RESTOBAR SAC.-<span style="font-weight:500;"> Equipo de soporte</span></p>`,
@@ -228,7 +228,7 @@ export const templateEmailUserRecoveryPassword = ({
         <p style="margin:0; font-size:14px;">Hola ${
           firstName && lastName ? `${firstName} ${lastName}` : email
         },</p>
-        <p style="margin:15px 0 0; font-size:13px;">Haz click <a style="" href="${link}">aquí</a> para restaurar tu contraseña.</p>
+        <p style="margin:15px 0 0; font-size:13px;">Haz clic <a style="" href="${link}">aquí</a> para restaurar tu contraseña.</p>
         <p style="margin:20px 0 0; font-size:13px;">Si no solicitaste cambiar tu contraseña has caso omiso a este mensaje.</p>
         <p style="margin:20px 0 0;font-size: 13px;font-weight: 600;font-style:italic;">"Por favor, no responder. Este es un correo automático, por lo tanto, no será revisado."</p>
         <p style="margin-top: 40px; font-weight: 600;font-size: 13px;">${new Date().getFullYear()} @ RESTOBAR SAC.-<span style="font-weight:500;"> Equipo de soporte</span></p>`,
@@ -250,6 +250,74 @@ export const templateEmailUserChangePassword = ({
           firstName && lastName ? `${firstName} ${lastName}` : email
         },</p>
         <p style="margin:15px 0 0; font-size:13px;">Tu contraseña fue actualizada, por favor vuelva a ingresar a la app para iniciar sesión.</p>
+        <br />
+        <p style="margin:20px 0 0;font-size: 13px;font-weight: 600;font-style:italic;">"Por favor, no responder. Este es un correo automático, por lo tanto, no será revisado."</p>
+        <p style="margin-top: 40px; font-weight: 600;font-size: 13px;">${new Date().getFullYear()} @ RESTOBAR SAC.-<span style="font-weight:500;"> Equipo de soporte</span></p>`,
+  };
+};
+
+export const templateEmailOrderUserReceived = ({
+  email = "",
+  firstName = "",
+  lastName = "",
+  orderNumber = "",
+  transactionDate = "",
+  paymentMethod = "",
+  total = "",
+}) => {
+  return {
+    from: `${config.SMTP_EMAIL}`,
+    to: `${email}`,
+    subject: `Su orden ${orderNumber} ha sido recibida - RESTOBAR SAC`,
+    html: `
+        <p style="margin:0; font-size:14px;">Hola ${
+          firstName && lastName
+            ? `${firstName.toUpperCase()} ${lastName.toUpperCase()}`
+            : email.toUpperCase()
+        },</p>
+        <p style="margin:15px 0 0; font-size:13px; font-weight: 500;">Recibimos tu orden</p>
+        <p style="margin:15px 0 0; font-size:13px;">¡Muchas gracias por tu compra! Ya estamos preparando tu pedido.</p>
+        <br />
+        <p style="margin:15px 0 0; font-size:13px; font-weight: 500;">Fecha/hora de la transacción: ${transactionDate}</p>
+        <p style="margin:15px 0 0; font-size:13px; font-weight: 500;">Número de pedido: ${orderNumber}</p>
+        <br />
+        <p style="margin:15px 0 0; font-size:13px; font-weight: 500;">Tipo de Pago: ${paymentMethod}</p>
+        <p style="margin:20px 0 0; font-size:13px; font-weight: 500;">Total de pedido: ${total}</p>
+        <br />
+        <p style="margin:20px 0 0;font-size: 13px;font-weight: 600;font-style:italic;">"Por favor, no responder. Este es un correo automático, por lo tanto, no será revisado."</p>
+        <p style="margin-top: 40px; font-weight: 600;font-size: 13px;">${new Date().getFullYear()} @ RESTOBAR SAC.-<span style="font-weight:500;"> Equipo de soporte</span></p>`,
+  };
+};
+
+export const templateEmailOrderUserTerminated = ({
+  email = "",
+  firstName = "",
+  lastName = "",
+  orderNumber = "",
+  transactionDate = "",
+  deliveryDate = "",
+  paymentMethod = "",
+  total = "",
+}) => {
+  return {
+    from: `${config.SMTP_EMAIL}`,
+    to: `${email}`,
+    subject: `Su orden ${orderNumber} ha sido entregada - RESTOBAR SAC`,
+    html: `
+        <p style="margin:0; font-size:14px;">Hola ${
+          firstName && lastName
+            ? `${firstName.toUpperCase()} ${lastName.toUpperCase()}`
+            : email.toUpperCase()
+        },</p>
+        <p style="margin:15px 0 0; font-size:13px; font-weight: 500;">Su orden fue entregada</p>
+        <p style="margin:15px 0 0; font-size:13px;">¡Muchas gracias por confiar en nosotros! Vuelva pronto.</p>
+        <br />
+        <p style="margin:15px 0 0; font-size:13px; font-weight: 500;">Fecha/hora de la transacción: ${transactionDate}</p>
+        <p style="margin:15px 0 0; font-size:13px; font-weight: 500;">Fecha/hora de la entrega: ${deliveryDate}</p>
+        <p style="margin:15px 0 0; font-size:13px; font-weight: 500;">Número de pedido: ${orderNumber}</p>
+        <br />
+        <p style="margin:15px 0 0; font-size:13px; font-weight: 500;">Tipo de Pago: ${paymentMethod}</p>
+        <p style="margin:20px 0 0; font-size:13px; font-weight: 500;">Total de pedido: ${total}</p>
         <br />
         <p style="margin:20px 0 0;font-size: 13px;font-weight: 600;font-style:italic;">"Por favor, no responder. Este es un correo automático, por lo tanto, no será revisado."</p>
         <p style="margin-top: 40px; font-weight: 600;font-size: 13px;">${new Date().getFullYear()} @ RESTOBAR SAC.-<span style="font-weight:500;"> Equipo de soporte</span></p>`,

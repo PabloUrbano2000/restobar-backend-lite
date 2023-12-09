@@ -9,6 +9,8 @@ import {
   templateEmailUserRecoveryAccount,
   templateEmailUserRecoveryPassword,
   templateEmailUserChangePassword,
+  templateEmailOrderUserReceived,
+  templateEmailOrderUserTerminated,
 } from "./templates";
 
 import { sendMail } from "./services";
@@ -24,5 +26,7 @@ export {
   templateEmailUserRecoveryAccount,
   templateEmailUserRecoveryPassword,
   templateEmailUserChangePassword,
+  templateEmailOrderUserReceived,
+  templateEmailOrderUserTerminated,
   sendMail,
 };

@@ -41,6 +41,7 @@ export type Order = {
   recepcionist: SystemUser;
   reception_date: Date | string;
   payment_method: PaymentMethod;
+  estimated_time: number;
   tax: number;
   subtotal: number;
   total: number;

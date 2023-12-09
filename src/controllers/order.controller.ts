@@ -11,13 +11,506 @@ import {
 import {
   ORDER_COLLECTION,
   ORDER_DETAILS_COLLECTION,
-  OrderDetail,
   OrderLine,
   OrderStatus,
 } from "../models/Order";
-import { PRODUCT_COLLECTION, Product } from "../models/Product";
+import { Product } from "../models/Product";
 import { generateUTCToLimaDate } from "../helpers/generators";
-import { DocumentReference, DocumentData } from "firebase/firestore";
+import {
+  DocumentReference,
+  DocumentData,
+  FieldPath,
+  WhereFilterOp,
+} from "firebase/firestore";
+import {
+  sendMail,
+  templateEmailOrderUserReceived,
+  templateEmailOrderUserTerminated,
+} from "../emails";
+import {
+  formatDatetoYYYYMMDD,
+  formatDatetoYYYYMMDDHHmmSS,
+} from "../helpers/formats";
+
+const getList = async (request: Request, res: Response) => {
+  const req = request as RequestServer;
+
+  let {
+    status = undefined,
+    start_date = "",
+    end_date = "",
+    order_number = "",
+    limit = 20,
+    offset = 0,
+  } = req.body;
+
+  const filter: [
+    fieldPath: string | FieldPath,
+    opStr: WhereFilterOp,
+    value: unknown
+  ][] = [];
+
+  let startDateFormat = new Date(
+    formatDatetoYYYYMMDD(generateUTCToLimaDate(), "-")
+  );
+  let endDateFormat = new Date(
+    formatDatetoYYYYMMDD(generateUTCToLimaDate(1), "-")
+  );
+
+  if (
+    start_date &&
+    /[1-2][0-9]{3}[-][0-1][0-9][-][0-3][0-9]/.test(start_date)
+  ) {
+    startDateFormat = new Date(start_date);
+  }
+
+  if (
+    end_date &&
+    start_date &&
+    /[1-2][0-9]{3}[-][0-1][0-9][-][0-3][0-9]/.test(end_date)
+  ) {
+    endDateFormat = new Date(end_date);
+    endDateFormat.setDate(endDateFormat.getDate() + 1);
+  }
+
+  filter.push(["reception_date", ">=", startDateFormat]);
+  filter.push(["reception_date", "<", endDateFormat]);
+
+  if (order_number) {
+    filter.push(["order_number", "==", order_number]);
+  }
+
+  if (typeof status === "number") {
+    filter.push(["status", "==", status]);
+  }
+
+  try {
+    const result = await req.firebase.getDocumentsByFilter(
+      ORDER_COLLECTION,
+      filter,
+      [["reception_date", "desc"]],
+      { limit, offset }
+    );
+
+    result.docs = result.docs.map((item) => {
+      let newData = {
+        ...item,
+      };
+      newData.reception_date =
+        new Date(newData?.reception_date?.seconds * 1000) || undefined;
+      newData.end_date =
+        new Date(newData?.end_date?.seconds * 1000) || undefined;
+      return req.firebase.cleanValuesDocument(newData, [
+        "client",
+        "items",
+        "reception",
+      ]);
+    });
+
+    return res.status(200).json({
+      status_code: 200,
+      ...result,
+    });
+  } catch (error) {
+    console.log("order get-list response - error", error);
+    return res
+      .status(500)
+      .json({ status_code: 500, errors: ["Ocurrió un error desconocido"] });
+  }
+};
+
+const getOrder = async (request: Request, res: Response) => {
+  const req = request as RequestServer;
+  let errors: ErrorFormat[] = [];
+  const resultValidator = validationResult(req);
+
+  if (!resultValidator.isEmpty()) {
+    errors = resultValidator.array().map((data) => data.msg);
+
+    return res.status(400).json({
+      status_code: 400,
+      error_code: "INVALID_BODY_FIELDS",
+      errors,
+    });
+  }
+
+  try {
+    const { id = "" } = req.body;
+
+    // buscamos la orden
+    const orderFound = await req.firebase.getDocumentById(ORDER_COLLECTION, id);
+
+    if (!orderFound) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "ORDER_NOT_FOUND",
+        errors: ["Orden no existente"],
+      });
+    }
+
+    orderFound.reception_date = new Date(
+      orderFound?.reception_date?.seconds * 1000
+    );
+
+    orderFound.end_date = new Date(orderFound?.end_date?.seconds * 1000);
+
+    orderFound.client = await req.firebase.getObjectByReference(
+      orderFound.client
+    );
+
+    orderFound.client = req.firebase.showValuesDocument(orderFound.client, [
+      "id",
+      "email",
+      "first_name",
+      "last_name",
+      "second_last_name",
+    ]);
+
+    orderFound.reception = await req.firebase.getObjectByReference(
+      orderFound.reception
+    );
+
+    orderFound.reception = req.firebase.showValuesDocument(
+      orderFound.reception,
+      ["id", "number_table", "code"]
+    );
+
+    const itemsFound = orderFound.items.map((item: any) =>
+      req.firebase.getObjectByReference(item)
+    );
+
+    orderFound.items = await Promise.all(itemsFound);
+
+    orderFound.items = orderFound.items.map((item: any) =>
+      req.firebase.cleanValuesDocument(item, ["order"])
+    );
+
+    const productsData = orderFound.items.map((prod: any) =>
+      req.firebase.getObjectByReference(prod.product)
+    );
+
+    const productsResult = await Promise.all(productsData);
+
+    orderFound.items = orderFound.items.map((item: any) => {
+      const newData = { ...item };
+      newData.product = productsResult.find(
+        (pro) => pro.id === item.product.id
+      );
+      newData.product = req.firebase.showValuesDocument(newData.product, [
+        "id",
+        "name",
+        "status",
+        "price",
+        "available",
+      ]);
+      return newData;
+    });
+
+    return res.status(200).json({
+      status_code: 200,
+      data: {
+        order: orderFound,
+      },
+      errors: [],
+    });
+  } catch (error) {
+    console.log("order get-order response - error", error);
+    return res
+      .status(500)
+      .json({ status_code: 500, errors: ["Ocurrió un error desconocido"] });
+  }
+};
+
+const inProcessOrder = async (request: Request, res: Response) => {
+  const req = request as RequestServer;
+  let errors: ErrorFormat[] = [];
+  const resultValidator = validationResult(req);
+
+  if (!resultValidator.isEmpty()) {
+    errors = resultValidator.array().map((data) => data.msg);
+
+    return res.status(400).json({
+      status_code: 400,
+      error_code: "INVALID_BODY_FIELDS",
+      errors,
+    });
+  }
+
+  try {
+    const { id = undefined, estimated_time = 0 } = req.body;
+
+    const orderFound = await req.firebase.getDocumentById(ORDER_COLLECTION, id);
+
+    if (!orderFound) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "ORDER_NOT_FOUND",
+        errors: ["Orden no existente"],
+      });
+    }
+
+    if (orderFound.status === 0) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "ORDER_IS_ANULLED",
+        errors: ["La orden se encuentra anulada"],
+      });
+    }
+
+    if (orderFound.status === 2) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "ORDER_IS_IN_PROCESS",
+        errors: ["La orden se encuentra en proceso"],
+      });
+    }
+
+    if (orderFound.status === 3) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "ORDER_IS_TERMINATED",
+        errors: ["La orden se encuentra terminada"],
+      });
+    }
+
+    const { id: orderId, ...rest } = orderFound;
+
+    await req.firebase.updateDocumentById(ORDER_COLLECTION, id, {
+      ...rest,
+      status: 2,
+      estimated_time,
+      updated_date: generateUTCToLimaDate(),
+    });
+
+    const newOrder = await req.firebase.getDocumentById(ORDER_COLLECTION, id);
+
+    newOrder.reception_date = new Date(
+      newOrder?.reception_date?.seconds * 1000
+    );
+
+    newOrder.end_date = new Date(newOrder?.end_date?.seconds * 1000);
+
+    newOrder.client = await req.firebase.getObjectByReference(newOrder.client);
+
+    newOrder.client = req.firebase.showValuesDocument(newOrder.client, [
+      "id",
+      "email",
+      "first_name",
+      "last_name",
+      "second_last_name",
+    ]);
+
+    newOrder.reception = await req.firebase.getObjectByReference(
+      newOrder.reception
+    );
+
+    newOrder.reception = req.firebase.showValuesDocument(newOrder.reception, [
+      "id",
+      "number_table",
+      "code",
+    ]);
+
+    const itemsFound = newOrder.items.map((item: any) =>
+      req.firebase.getObjectByReference(item)
+    );
+
+    newOrder.items = await Promise.all(itemsFound);
+
+    newOrder.items = newOrder.items.map((item: any) =>
+      req.firebase.cleanValuesDocument(item, ["order"])
+    );
+
+    const productsData = newOrder.items.map((prod: any) =>
+      req.firebase.getObjectByReference(prod.product)
+    );
+
+    const productsResult = await Promise.all(productsData);
+
+    newOrder.items = newOrder.items.map((item: any) => {
+      const newData = { ...item };
+      newData.product = productsResult.find(
+        (pro) => pro.id === item.product.id
+      );
+      newData.product = req.firebase.showValuesDocument(newData.product, [
+        "id",
+        "name",
+        "status",
+        "price",
+        "available",
+      ]);
+      return newData;
+    });
+
+    return res.status(200).json({
+      status_code: 200,
+      data: {
+        order: newOrder,
+      },
+      message: "La orden fue actualizada a en proceso éxitosamente",
+      errors: [],
+    });
+  } catch (error) {
+    console.log("order in-process-order response - error", error);
+    return res
+      .status(500)
+      .json({ status_code: 500, errors: ["Ocurrió un error desconocido"] });
+  }
+};
+
+const terminateOrder = async (request: Request, res: Response) => {
+  const req = request as RequestServer;
+  let errors: ErrorFormat[] = [];
+  const resultValidator = validationResult(req);
+
+  if (!resultValidator.isEmpty()) {
+    errors = resultValidator.array().map((data) => data.msg);
+
+    return res.status(400).json({
+      status_code: 400,
+      error_code: "INVALID_BODY_FIELDS",
+      errors,
+    });
+  }
+
+  try {
+    const { id = undefined } = req.body;
+
+    const orderFound = await req.firebase.getDocumentById(ORDER_COLLECTION, id);
+
+    if (!orderFound) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "ORDER_NOT_FOUND",
+        errors: ["Orden no existente"],
+      });
+    }
+
+    if (orderFound.status === 0) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "ORDER_IS_ANULLED",
+        errors: ["La orden se encuentra anulada"],
+      });
+    }
+
+    if (orderFound.status === 1) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "ORDER_IS_PENDING",
+        errors: ["La orden se encuentra pendiente de tomar"],
+      });
+    }
+
+    if (orderFound.status === 3) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "ORDER_IS_TERMINATED",
+        errors: ["La orden se encuentra terminada"],
+      });
+    }
+
+    const { id: orderId, ...rest } = orderFound;
+
+    await req.firebase.updateDocumentById(ORDER_COLLECTION, id, {
+      ...rest,
+      status: 3,
+      end_date: generateUTCToLimaDate(),
+      updated_date: generateUTCToLimaDate(),
+    });
+
+    const newOrder = await req.firebase.getDocumentById(ORDER_COLLECTION, id);
+
+    newOrder.reception_date = new Date(
+      newOrder?.reception_date?.seconds * 1000
+    );
+
+    newOrder.end_date = new Date(newOrder?.end_date?.seconds * 1000);
+
+    newOrder.client = await req.firebase.getObjectByReference(newOrder.client);
+
+    newOrder.client = req.firebase.showValuesDocument(newOrder.client, [
+      "id",
+      "email",
+      "first_name",
+      "last_name",
+      "second_last_name",
+    ]);
+
+    newOrder.reception = await req.firebase.getObjectByReference(
+      newOrder.reception
+    );
+
+    newOrder.reception = req.firebase.showValuesDocument(newOrder.reception, [
+      "id",
+      "number_table",
+      "code",
+    ]);
+
+    const itemsFound = newOrder.items.map((item: any) =>
+      req.firebase.getObjectByReference(item)
+    );
+
+    newOrder.items = await Promise.all(itemsFound);
+
+    newOrder.items = newOrder.items.map((item: any) =>
+      req.firebase.cleanValuesDocument(item, ["order"])
+    );
+
+    const productsData = newOrder.items.map((prod: any) =>
+      req.firebase.getObjectByReference(prod.product)
+    );
+
+    const productsResult = await Promise.all(productsData);
+
+    newOrder.items = newOrder.items.map((item: any) => {
+      const newData = { ...item };
+      newData.product = productsResult.find(
+        (pro) => pro.id === item.product.id
+      );
+      newData.product = req.firebase.showValuesDocument(newData.product, [
+        "id",
+        "name",
+        "status",
+        "price",
+        "available",
+      ]);
+      return newData;
+    });
+
+    const template = templateEmailOrderUserTerminated({
+      email: newOrder.client?.email?.toLowerCase().trim() || "",
+      firstName: newOrder.client?.first_name?.trim() || "",
+      lastName: newOrder.client?.last_name?.trim() || "",
+      orderNumber: newOrder?.order_number?.toString(),
+      paymentMethod: newOrder.payment_method,
+      total: newOrder?.total?.toFixed(2),
+      transactionDate: formatDatetoYYYYMMDDHHmmSS(newOrder.reception_date),
+      deliveryDate: formatDatetoYYYYMMDDHHmmSS(newOrder.end_date),
+    });
+
+    const resEmail = await sendMail(template, "order terminate-order");
+
+    if (resEmail.status_code !== 200) {
+      return res.status(resEmail.status_code).json({
+        ...resEmail,
+      });
+    }
+
+    return res.status(200).json({
+      status_code: 200,
+      data: {
+        order: newOrder,
+      },
+      message: "La orden fue terminada éxitosamente",
+      errors: [],
+    });
+  } catch (error) {
+    console.log("order terminate-order response - error", error);
+    return res
+      .status(500)
+      .json({ status_code: 500, errors: ["Ocurrió un error desconocido"] });
+  }
+};
 
 const createClientOrder = async (request: Request, res: Response) => {
   const req = request as RequestServer;
@@ -93,6 +586,28 @@ const createClientOrder = async (request: Request, res: Response) => {
       });
     }
 
+    // verificar que el usuario no tenga una orden en proceso
+    const userReference = req.firebase.instanceReferenceById(
+      USER_COLLECTION,
+      userFound.id || ""
+    );
+
+    const userHasOrdersInProcess = await req.firebase.getOneDocument(
+      ORDER_COLLECTION,
+      [
+        ["client", "==", userReference],
+        ["status", "in", [1, 2]],
+      ]
+    );
+
+    if (userHasOrdersInProcess) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_HAS_ORDERS_IN_PROCESS",
+        errors: ["El usuario tiene pedidos pendientes"],
+      });
+    }
+
     const {
       reception = undefined,
       user_document_number = undefined,
@@ -163,7 +678,7 @@ const createClientOrder = async (request: Request, res: Response) => {
       if (item.product && !productsId.includes(item.product)) {
         productsId.push(item.product);
         productsData.push(
-          req.firebase.getDocumentById(PRODUCT_COLLECTION, item.product)
+          req.firebase.getDocumentById(ORDER_COLLECTION, item.product)
         );
       }
     }
@@ -198,7 +713,7 @@ const createClientOrder = async (request: Request, res: Response) => {
     const tax = 0.18;
     let subtotal = 0;
     let total = 0;
-    items.forEach((od: any) => {
+    items.forEach((od: OrderLine) => {
       const product = productsResult.find((val) => val?.id === od.product);
       subtotal = subtotal + (product?.price || 0) * od.quantity;
     });
@@ -229,11 +744,6 @@ const createClientOrder = async (request: Request, res: Response) => {
     );
 
     // generamos la orden
-    const userReference = req.firebase.instanceReferenceById(
-      USER_COLLECTION,
-      userFound.id || ""
-    );
-
     const receptionReference = req.firebase.instanceReferenceById(
       RECEPTION_COLLECTION,
       reception || ""
@@ -263,7 +773,7 @@ const createClientOrder = async (request: Request, res: Response) => {
           newOrder.id
         ),
         product: req.firebase.instanceReferenceById(
-          PRODUCT_COLLECTION,
+          ORDER_COLLECTION,
           od.product
         ),
         price_of_sale:
@@ -335,13 +845,23 @@ const createClientOrder = async (request: Request, res: Response) => {
       "items",
     ]);
 
-    // const itemsFound = newOrderFound.items.map((item: any) =>
-    //   req.firebase.getObjectByReference(item)
-    // );
+    const template = templateEmailOrderUserReceived({
+      email: userFound?.email?.toLowerCase().trim() || "",
+      firstName: userFound?.first_name?.trim() || "",
+      lastName: userFound?.last_name?.trim() || "",
+      orderNumber: newOrderFound?.order_number?.toString(),
+      paymentMethod: newOrderFound.payment_method,
+      total: newOrderFound?.total?.toFixed(2),
+      transactionDate: formatDatetoYYYYMMDDHHmmSS(newOrderFound.reception_date),
+    });
 
-    // newOrderFound.items = await Promise.all(itemsFound);
+    const resEmail = await sendMail(template, "order create-client-order");
 
-    // newOrderFound.items = newOrderFound.items.map((item)=> req.firebase)
+    if (resEmail.status_code !== 200) {
+      return res.status(resEmail.status_code).json({
+        ...resEmail,
+      });
+    }
 
     return res.status(200).json({
       status_code: 200,
@@ -359,4 +879,291 @@ const createClientOrder = async (request: Request, res: Response) => {
   }
 };
 
-export { createClientOrder };
+const getClientList = async (request: Request, res: Response) => {
+  const req = request as RequestServer;
+
+  let { status = undefined, limit = 20, offset = 0 } = req.body;
+
+  const filter: [
+    fieldPath: string | FieldPath,
+    opStr: WhereFilterOp,
+    value: unknown
+  ][] = [];
+
+  if (typeof status === "number") {
+    filter.push(["status", "==", status]);
+  }
+
+  try {
+    const accessToken = request.headers["x-access-token"]?.toString() || "";
+
+    const userFound: User | null = await req.firebase.getDocumentById(
+      USER_COLLECTION,
+      req.userId
+    );
+    if (!userFound) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_NOT_FOUND",
+        errors: ["Usuario no existente"],
+      });
+    }
+
+    if (userFound.id !== req.userId) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "INVALID_TOKEN",
+        errors: ["Token inválido"],
+      });
+    }
+
+    if (!userFound.tokens || userFound.tokens?.length === 0) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "INVALID_TOKEN",
+        errors: ["Token inválido"],
+      });
+    }
+
+    const hasAccessToken = userFound?.tokens?.some(
+      (token: UserToken) => token.access_token === accessToken
+    );
+
+    if (!hasAccessToken) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "INVALID_TOKEN",
+        errors: ["Token inválido"],
+      });
+    }
+
+    if (userFound.verified === 0) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_NOT_VERIFIED",
+        errors: ["Cuenta aún no verificada, por favor valide su cuenta"],
+      });
+    }
+
+    if (userFound.status === 0) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_NOT_ENABLED",
+        errors: ["El usuario está deshabilitado"],
+      });
+    }
+
+    const userReference = req.firebase.instanceReferenceById(
+      USER_COLLECTION,
+      userFound.id || ""
+    );
+
+    filter.push(["client", "==", userReference]);
+
+    const result = await req.firebase.getDocumentsByFilter(
+      ORDER_COLLECTION,
+      filter,
+      [["reception_date", "desc"]],
+      { limit, offset }
+    );
+
+    result.docs = result.docs.map((item) => {
+      let newData = {
+        ...item,
+      };
+      newData.reception_date =
+        new Date(newData?.reception_date?.seconds * 1000) || undefined;
+      newData.end_date =
+        new Date(newData?.end_date?.seconds * 1000) || undefined;
+      return req.firebase.cleanValuesDocument(newData, [
+        "client",
+        "items",
+        "reception",
+      ]);
+    });
+
+    return res.status(200).json({
+      status_code: 200,
+      ...result,
+    });
+  } catch (error) {
+    console.log("order get-client-list response - error", error);
+    return res
+      .status(500)
+      .json({ status_code: 500, errors: ["Ocurrió un error desconocido"] });
+  }
+};
+
+const getClientOrder = async (request: Request, res: Response) => {
+  const req = request as RequestServer;
+  let errors: ErrorFormat[] = [];
+  const resultValidator = validationResult(req);
+
+  if (!resultValidator.isEmpty()) {
+    errors = resultValidator.array().map((data) => data.msg);
+
+    return res.status(400).json({
+      status_code: 400,
+      error_code: "INVALID_BODY_FIELDS",
+      errors,
+    });
+  }
+
+  try {
+    const accessToken = request.headers["x-access-token"]?.toString() || "";
+
+    const userFound: User | null = await req.firebase.getDocumentById(
+      USER_COLLECTION,
+      req.userId
+    );
+    if (!userFound) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_NOT_FOUND",
+        errors: ["Usuario no existente"],
+      });
+    }
+
+    if (userFound.id !== req.userId) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "INVALID_TOKEN",
+        errors: ["Token inválido"],
+      });
+    }
+
+    if (!userFound.tokens || userFound.tokens?.length === 0) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "INVALID_TOKEN",
+        errors: ["Token inválido"],
+      });
+    }
+
+    const hasAccessToken = userFound?.tokens?.some(
+      (token: UserToken) => token.access_token === accessToken
+    );
+
+    if (!hasAccessToken) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "INVALID_TOKEN",
+        errors: ["Token inválido"],
+      });
+    }
+
+    if (userFound.verified === 0) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_NOT_VERIFIED",
+        errors: ["Cuenta aún no verificada, por favor valide su cuenta"],
+      });
+    }
+
+    if (userFound.status === 0) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_NOT_ENABLED",
+        errors: ["El usuario está deshabilitado"],
+      });
+    }
+
+    const { id = "" } = req.body;
+
+    // buscamos la orden
+    const orderFound = await req.firebase.getDocumentById(ORDER_COLLECTION, id);
+
+    if (!orderFound) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "ORDER_NOT_FOUND",
+        errors: ["Orden no existente"],
+      });
+    }
+
+    if (orderFound?.client?.id !== userFound.id) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "ORDER_NOT_FOUND",
+        errors: ["Orden no existente"],
+      });
+    }
+
+    orderFound.reception_date = new Date(
+      orderFound?.reception_date?.seconds * 1000
+    );
+
+    orderFound.end_date = new Date(orderFound?.end_date?.seconds * 1000);
+
+    orderFound.client = await req.firebase.getObjectByReference(
+      orderFound.client
+    );
+
+    orderFound.client = req.firebase.showValuesDocument(orderFound.client, [
+      "id",
+      "first_name",
+      "last_name",
+      "second_last_name",
+    ]);
+
+    orderFound.reception = await req.firebase.getObjectByReference(
+      orderFound.reception
+    );
+
+    orderFound.reception = req.firebase.showValuesDocument(
+      orderFound.reception,
+      ["id", "number_table", "code"]
+    );
+
+    const itemsFound = orderFound.items.map((item: any) =>
+      req.firebase.getObjectByReference(item)
+    );
+
+    orderFound.items = await Promise.all(itemsFound);
+
+    orderFound.items = orderFound.items.map((item: any) =>
+      req.firebase.cleanValuesDocument(item, ["order"])
+    );
+
+    const productsData = orderFound.items.map((prod: any) =>
+      req.firebase.getObjectByReference(prod.product)
+    );
+
+    const productsResult = await Promise.all(productsData);
+
+    orderFound.items = orderFound.items.map((item: any) => {
+      const newData = { ...item };
+      newData.product = productsResult.find(
+        (pro) => pro.id === item.product.id
+      );
+      newData.product = req.firebase.showValuesDocument(newData.product, [
+        "id",
+        "name",
+      ]);
+      return newData;
+    });
+
+    return res.status(200).json({
+      status_code: 200,
+      data: {
+        order: orderFound,
+      },
+      errors: [],
+    });
+  } catch (error) {
+    console.log("order get-client-order response - error", error);
+    return res
+      .status(500)
+      .json({ status_code: 500, errors: ["Ocurrió un error desconocido"] });
+  }
+};
+
+export {
+  getList,
+  getOrder,
+  inProcessOrder,
+  terminateOrder,
+  createClientOrder,
+  getClientList,
+  getClientOrder,
+};

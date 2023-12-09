@@ -58,7 +58,7 @@ const getClientList = async (request: Request, res: Response) => {
       docs: result.docs,
     });
   } catch (error) {
-    console.log("gender get-public-list response - error", error);
+    console.log("gender get-client-list response - error", error);
     return res
       .status(500)
       .json({ status_code: 500, errors: ["Ocurrió un error desconocido"] });

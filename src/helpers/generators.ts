@@ -79,12 +79,15 @@ export const generatePassword = (numberCharacters: number) => {
   return generateWord;
 };
 
-export const generateUTCToLimaDate = () => {
+export const generateUTCToLimaDate = (days: number = 0) => {
   const date = new Date(
     moment
       .utc()
       .add(-(5 * 60 * 60 * 1000))
       .toString()
   );
+  if (days > 0) {
+    date.setDate(date.getDate() + days);
+  }
   return date;
 };

@@ -34,7 +34,11 @@ router.post(
   [
     verifySysUserAccessToken,
     verifyPermissions("PRODUCTS"),
-    body("id").notEmpty().withMessage("El id del producto es obligatorio"),
+    body("id")
+      .notEmpty()
+      .withMessage("El id del producto es obligatorio")
+      .isString()
+      .withMessage("El id del producto debe ser una cadena"),
   ],
   getProduct
 );
@@ -44,39 +48,11 @@ router.put(
   [
     verifySysUserAccessToken,
     verifyPermissions("PRODUCTS"),
-    body("id").notEmpty().withMessage("El id del producto es obligatorio"),
-    body().custom((_, { req }: any) => {
-      return fileExists({
-        req,
-        attribute: "image",
-        errorMessage: "La imagen es obligatoria",
-      });
-    }),
-    body().custom((_, { req }: any) => {
-      return hasFileValidSize({
-        req,
-        attribute: "image",
-        errorMessage: "El tamaño de la imagen excede el tamaño límite",
-      });
-    }),
-    body().custom((_, { req }: any) => {
-      return hasFileValidExtensions({
-        req,
-        attribute: "image",
-        extensions: ["jpeg", "jpg", "png"],
-        errorMessage: "La imagen no tiene una extensión válida",
-      });
-    }),
-  ],
-  uploadProductImage
-);
-
-router.put(
-  "/image/upload",
-  [
-    verifySysUserAccessToken,
-    verifyPermissions("PRODUCTS"),
-    body("id").notEmpty().withMessage("El id del producto es obligatorio"),
+    body("id")
+      .notEmpty()
+      .withMessage("El id del producto es obligatorio")
+      .isString()
+      .withMessage("El id del producto debe ser una cadena"),
     body().custom((_, { req }: any) => {
       return fileExists({
         req,
@@ -108,7 +84,11 @@ router.put(
   [
     verifySysUserAccessToken,
     verifyPermissions("PRODUCTS"),
-    body("id").notEmpty().withMessage("El id del producto es obligatorio"),
+    body("id")
+      .notEmpty()
+      .withMessage("El id del producto es obligatorio")
+      .isString()
+      .withMessage("El id del producto debe ser una cadena"),
   ],
   deleteProductImage
 );
@@ -136,8 +116,12 @@ router.post(
     body("price")
       .notEmpty()
       .withMessage("El precio es obligatorio")
-      .isNumeric()
-      .withMessage("El precio debe ser un número")
+      .custom((data) => {
+        if (data && typeof data !== "number") {
+          throw Error("El precio debe ser un número");
+        }
+        return true;
+      })
       .isFloat({ min: 1.0, max: 1000 })
       .withMessage("El precio debe valer entre 1 a 1000"),
 
@@ -174,8 +158,12 @@ router.post(
 
     body("status")
       .optional()
-      .isNumeric()
-      .withMessage("El estado debe ser un número")
+      .custom((data) => {
+        if (typeof data !== "number") {
+          throw Error("El estado debe ser un número");
+        }
+        return true;
+      })
       .custom((data: string) => {
         if (data) {
           if (!new RegExp(/^(0|1)$/).test(data.toString())) {
@@ -193,9 +181,9 @@ router.put(
   [verifySysUserAccessToken, verifyPermissions("PRODUCTS")],
   body("id")
     .notEmpty()
-    .withMessage("El id es obligatorio")
+    .withMessage("El id del producto es obligatorio")
     .isString()
-    .withMessage("El id debe ser una cadena"),
+    .withMessage("El id del producto debe ser una cadena"),
   body("name")
     .optional()
     .isString()
@@ -212,8 +200,12 @@ router.put(
     }),
   body("price")
     .optional()
-    .isNumeric()
-    .withMessage("El precio debe ser un número")
+    .custom((data) => {
+      if (data && typeof data !== "number") {
+        throw Error("El precio debe ser un número");
+      }
+      return true;
+    })
     .isFloat({ min: 1.0, max: 1000 })
     .withMessage("El precio debe valer entre 1 a 1000"),
 
@@ -249,8 +241,12 @@ router.put(
     }),
   body("status")
     .optional()
-    .isNumeric()
-    .withMessage("El estado debe ser un número")
+    .custom((data) => {
+      if (data && typeof data !== "number") {
+        throw Error("El estado debe ser un número");
+      }
+      return true;
+    })
     .custom((data: string) => {
       if (data) {
         if (!new RegExp(/^(0|1)$/).test(data.toString())) {
@@ -267,9 +263,9 @@ router.put(
   [verifySysUserAccessToken, verifyPermissions("PRODUCTS")],
   body("id")
     .notEmpty()
-    .withMessage("El id es obligatorio")
+    .withMessage("El id del producto es obligatorio")
     .isString()
-    .withMessage("El id debe ser una cadena"),
+    .withMessage("El id del producto debe ser una cadena"),
   disableProduct
 );
 
@@ -278,9 +274,9 @@ router.put(
   [verifySysUserAccessToken, verifyPermissions("PRODUCTS")],
   body("id")
     .notEmpty()
-    .withMessage("El id es obligatorio")
+    .withMessage("El id del producto es obligatorio")
     .isString()
-    .withMessage("El id debe ser una cadena"),
+    .withMessage("El id del producto debe ser una cadena"),
   enableProduct
 );
 
@@ -291,9 +287,9 @@ router.put(
     verifyPermissions("PRODUCTS"),
     body("id")
       .notEmpty()
-      .withMessage("El id es obligatorio")
+      .withMessage("El id del producto es obligatorio")
       .isString()
-      .withMessage("El id debe ser una cadena"),
+      .withMessage("El id del producto debe ser una cadena"),
   ],
   unavailableProduct
 );
@@ -305,9 +301,9 @@ router.put(
     verifyPermissions("PRODUCTS"),
     body("id")
       .notEmpty()
-      .withMessage("El id es obligatorio")
+      .withMessage("El id del producto es obligatorio")
       .isString()
-      .withMessage("El id debe ser una cadena"),
+      .withMessage("El id del producto debe ser una cadena"),
   ],
   availableProduct
 );

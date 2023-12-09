@@ -23,7 +23,11 @@ router.post(
   [
     verifySysUserAccessToken,
     verifyPermissions("SYSTEM_USERS"),
-    body("id").notEmpty().withMessage("El id del usuario es obligatorio"),
+    body("id")
+      .notEmpty()
+      .withMessage("El id del usuario es obligatorio")
+      .isString()
+      .withMessage("El id del usuario debe ser una cadena"),
   ],
   getSystemUser
 );
@@ -75,8 +79,12 @@ router.post(
       .withMessage("El rol debe ser una cadena"),
     body("status")
       .optional()
-      .isNumeric()
-      .withMessage("El estado debe ser un número")
+      .custom((data) => {
+        if (data && typeof data !== "number") {
+          throw Error("El estado debe ser un número");
+        }
+        return true;
+      })
       .custom((data: string) => {
         if (data) {
           if (!new RegExp(/^(0|1)$/).test(data.toString())) {
@@ -96,9 +104,9 @@ router.put(
     verifyPermissions("SYSTEM_USERS"),
     body("id")
       .notEmpty()
-      .withMessage("El id es obligatorio")
+      .withMessage("El id del usuario es obligatorio")
       .isString()
-      .withMessage("El id debe ser una cadena"),
+      .withMessage("El id del usuario debe ser una cadena"),
     body("first_name")
       .optional()
       .isString()
@@ -135,8 +143,12 @@ router.put(
       .withMessage("El rol es inválido"),
     body("status")
       .optional()
-      .isNumeric()
-      .withMessage("El estado debe ser un número")
+      .custom((data) => {
+        if (data && typeof data !== "number") {
+          throw Error("El estado debe ser un número");
+        }
+        return true;
+      })
       .custom((data: string) => {
         if (data) {
           if (!new RegExp(/^(0|1)$/).test(data.toString())) {
@@ -156,9 +168,9 @@ router.put(
     verifyPermissions("SYSTEM_USERS"),
     body("id")
       .notEmpty()
-      .withMessage("El id es obligatorio")
+      .withMessage("El id del usuario es obligatorio")
       .isString()
-      .withMessage("El id debe ser una cadena"),
+      .withMessage("El id del usuario debe ser una cadena"),
   ],
   disableSystemUser
 );
@@ -170,9 +182,9 @@ router.put(
     verifyPermissions("SYSTEM_USERS"),
     body("id")
       .notEmpty()
-      .withMessage("El id es obligatorio")
+      .withMessage("El id del usuario es obligatorio")
       .isString()
-      .withMessage("El id debe ser una cadena"),
+      .withMessage("El id del usuario debe ser una cadena"),
   ],
   enableSystemUser
 );

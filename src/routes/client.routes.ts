@@ -3,7 +3,11 @@ import { getClientList as getCategoryList } from "../controllers/category.contro
 import { getClientList as getGenderList } from "../controllers/gender.controller";
 import { getClientList as getDocumentTypeList } from "../controllers/documentType.controller";
 import { getClientList as getReceptionList } from "../controllers/reception.controller";
-import { createClientOrder } from "../controllers/order.controller";
+import {
+  createClientOrder,
+  getClientOrder,
+  getClientList as getOrderList,
+} from "../controllers/order.controller";
 import {
   changePasswordUser,
   getClientProfile,
@@ -18,7 +22,6 @@ import { body } from "express-validator";
 import { cellphoneRegex, descripRegex, namesRegex } from "../utilities/regex";
 import {
   OrderChannel,
-  OrderDetail,
   OrderLine,
   OrderType,
   PaymentMethod,
@@ -42,9 +45,9 @@ router.post(
     verifyUserAccessToken,
     body("id")
       .notEmpty()
-      .withMessage("El id es obligatorio")
+      .withMessage("El id del producto es obligatorio")
       .isString()
-      .withMessage("El id debe ser una cadena"),
+      .withMessage("El id del producto debe ser una cadena"),
   ],
   getClientProduct
 );
@@ -201,9 +204,9 @@ router.post(
     verifyUserAccessToken,
     body("reception")
       .notEmpty()
-      .withMessage("El id de la mesa es obligatorio")
+      .withMessage("El id de la recepción es obligatorio")
       .isString()
-      .withMessage("El id de la mesa debe ser una cadena"),
+      .withMessage("El id de la recepción debe ser una cadena"),
     body("user_document_number")
       .notEmpty()
       .withMessage("El número de documento del cliente es obligatorio")
@@ -297,5 +300,20 @@ router.post(
   ],
   createClientOrder
 );
+
+router.post(
+  "/order/get",
+  [
+    verifyUserAccessToken,
+    body("id")
+      .notEmpty()
+      .withMessage("El id de la orden es obligatorio")
+      .isString()
+      .withMessage("El id de la orden debe ser una cadena"),
+  ],
+  getClientOrder
+);
+
+router.post("/order/list", [verifyUserAccessToken], getOrderList);
 
 export default router;

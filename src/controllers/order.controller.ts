@@ -152,6 +152,10 @@ const getOrder = async (request: Request, res: Response) => {
       orderFound?.reception_date?.seconds * 1000
     );
 
+    orderFound.updated_date = new Date(
+      orderFound?.updated_date?.seconds * 1000
+    );
+
     orderFound.end_date = new Date(orderFound?.end_date?.seconds * 1000);
 
     orderFound.client = await req.firebase.getObjectByReference(
@@ -185,8 +189,8 @@ const getOrder = async (request: Request, res: Response) => {
       req.firebase.cleanValuesDocument(item, ["order"])
     );
 
-    const productsData = orderFound.items.map((prod: any) =>
-      req.firebase.getObjectByReference(prod.product)
+    const productsData = orderFound.items.map((item: any) =>
+      req.firebase.getDocumentById(PRODUCT_COLLECTION, item.product.id)
     );
 
     const productsResult = await Promise.all(productsData);
@@ -457,7 +461,7 @@ const terminateOrder = async (request: Request, res: Response) => {
     );
 
     const productsData = newOrder.items.map((prod: any) =>
-      req.firebase.getObjectByReference(prod.product)
+      req.firebase.getDocumentById(PRODUCT_COLLECTION, prod?.product?.id)
     );
 
     const productsResult = await Promise.all(productsData);

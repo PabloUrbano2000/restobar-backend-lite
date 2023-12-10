@@ -117,6 +117,19 @@ const createReception = async (request: Request, res: Response) => {
       available = undefined,
     } = req.body;
 
+    const isExistReceptionByCode = await req.firebase.getOneDocument(
+      RECEPTION_COLLECTION,
+      [["code", "==", code?.toUpperCase()]]
+    );
+
+    if (isExistReceptionByCode) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "RECEPTION_EXIST",
+        errors: ["La recepción ya se encuentra registrada por el código"],
+      });
+    }
+
     const isExistReceptionByNumberTable = await req.firebase.getOneDocument(
       RECEPTION_COLLECTION,
       [["number_table", "==", number_table?.toUpperCase()]]
@@ -129,19 +142,6 @@ const createReception = async (request: Request, res: Response) => {
         errors: [
           "La recepción ya se encuentra registrada por el número de mesa",
         ],
-      });
-    }
-
-    const isExistReceptionByCode = await req.firebase.getOneDocument(
-      RECEPTION_COLLECTION,
-      [["code", "==", code?.toUpperCase()]]
-    );
-
-    if (isExistReceptionByCode) {
-      return res.status(401).json({
-        status_code: 401,
-        error_code: "RECEPTION_EXIST",
-        errors: ["La recepción ya se encuentra registrada por el código"],
       });
     }
 
@@ -242,24 +242,6 @@ const updateReception = async (request: Request, res: Response) => {
       });
     }
 
-    if (number_table !== undefined) {
-      const { docs } = await req.firebase.getDocumentsByFilter(
-        RECEPTION_COLLECTION,
-        [["number_table", "==", number_table?.toUpperCase()]]
-      );
-
-      if (docs.length > 0) {
-        const hasDuplicate = docs.some((doc: Reception) => doc.id !== id);
-        if (hasDuplicate) {
-          return res.status(401).json({
-            status_code: 401,
-            error_code: "RECEPTION_EXIST",
-            errors: ["Ya existe una recepción con el mismo número de mesa"],
-          });
-        }
-      }
-    }
-
     if (code !== undefined) {
       const { docs } = await req.firebase.getDocumentsByFilter(
         RECEPTION_COLLECTION,
@@ -273,6 +255,24 @@ const updateReception = async (request: Request, res: Response) => {
             status_code: 401,
             error_code: "RECEPTION_EXIST",
             errors: ["Ya existe una recepción con el mismo código de mesa"],
+          });
+        }
+      }
+    }
+
+    if (number_table !== undefined) {
+      const { docs } = await req.firebase.getDocumentsByFilter(
+        RECEPTION_COLLECTION,
+        [["number_table", "==", number_table?.toUpperCase()]]
+      );
+
+      if (docs.length > 0) {
+        const hasDuplicate = docs.some((doc: Reception) => doc.id !== id);
+        if (hasDuplicate) {
+          return res.status(401).json({
+            status_code: 401,
+            error_code: "RECEPTION_EXIST",
+            errors: ["Ya existe una recepción con el mismo número de mesa"],
           });
         }
       }

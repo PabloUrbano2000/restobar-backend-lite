@@ -14,7 +14,7 @@ import {
   OrderLine,
   OrderStatus,
 } from "../models/Order";
-import { Product } from "../models/Product";
+import { PRODUCT_COLLECTION, Product } from "../models/Product";
 import { generateUTCToLimaDate } from "../helpers/generators";
 import {
   DocumentReference,
@@ -678,7 +678,7 @@ const createClientOrder = async (request: Request, res: Response) => {
       if (item.product && !productsId.includes(item.product)) {
         productsId.push(item.product);
         productsData.push(
-          req.firebase.getDocumentById(ORDER_COLLECTION, item.product)
+          req.firebase.getDocumentById(PRODUCT_COLLECTION, item.product)
         );
       }
     }

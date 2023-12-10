@@ -694,20 +694,21 @@ const createClientOrder = async (request: Request, res: Response) => {
     }
 
     // verificamos la existencia de los productos
-    productsResult.forEach((prod) => {
-      if (
+    const hasProductsUnavailable = productsResult.some(
+      (prod) =>
         typeof prod?.available === undefined ||
         prod?.available === 0 ||
         typeof prod?.status === undefined ||
         prod?.status === 0
-      ) {
-        return res.status(401).json({
-          status_code: 401,
-          error_code: "PRODUCTS_IS_UNAVAILABLE",
-          errors: ["Producto(s) no disponible(s)"],
-        });
-      }
-    });
+    );
+
+    if (hasProductsUnavailable) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "PRODUCTS_IS_UNAVAILABLE",
+        errors: ["Producto(s) no disponible(s)"],
+      });
+    }
 
     // generamos los cálculos
     const tax = 0.18;

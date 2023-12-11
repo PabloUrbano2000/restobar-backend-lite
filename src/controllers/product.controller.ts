@@ -773,6 +773,7 @@ const getClientList = async (request: Request, res: Response) => {
         data = req.firebase.showValuesDocument(data, [
           "id",
           "name",
+          "image",
           "category",
           "available",
           "description",

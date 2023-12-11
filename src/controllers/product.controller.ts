@@ -774,6 +774,7 @@ const getClientList = async (request: Request, res: Response) => {
           "id",
           "name",
           "image",
+          "price",
           "category",
           "available",
           "description",

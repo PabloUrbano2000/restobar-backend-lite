@@ -117,9 +117,9 @@ const insertPermissionsInRoleCollection = async (
     await firebase.updateDocumentById(ROLE_COLLECTION, id || "", newData);
 
     console.log(
-      `DOCUMENTO ${roleName} ACTUALIZADO DE LA COLECCIÓN ${PRODUCT_COLLECTION} CON LOS SIGUIENTES PERMISOS:`,
+      `DOCUMENTO ${roleName} ACTUALIZADO DE LA COLECCIÓN ${ROLE_COLLECTION} CON LOS SIGUIENTES PERMISOS:`,
       permissions.map((per) => per)
-    );
+    )
   }
 };
 
@@ -264,12 +264,14 @@ export const executeData = async () => {
     MODULES.SYSTEM_USERS,
     MODULES.USERS,
     MODULES.ROLES,
+    MODULES.SALES,
   ]);
   await insertPermissionsInRoleCollection(ROLES.ADMIN, [
     MODULES.ORDERS,
     MODULES.PRODUCTS,
     MODULES.RECEPTIONS,
     MODULES.USERS,
+    MODULES.SALES,
   ]);
   await insertPermissionsInRoleCollection(ROLES.CHEF, [
     MODULES.ORDERS,

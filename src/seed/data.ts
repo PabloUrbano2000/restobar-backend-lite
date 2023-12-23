@@ -62,6 +62,10 @@ export const modulesData: Module[] = [
     name: MODULES.ORDERS,
     status: 1,
   },
+  {
+    name: MODULES.SALES,
+    status: 1,
+  },
 ];
 export const rolesData: Role[] = [
   {

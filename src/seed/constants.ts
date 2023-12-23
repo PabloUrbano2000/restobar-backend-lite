@@ -14,6 +14,7 @@ export enum MODULES {
   USERS = "USERS",
   PRODUCTS = "PRODUCTS",
   ORDERS = "ORDERS",
+  SALES = "SALES",
 }
 
 export const GENDER_MAN = "Hombre";

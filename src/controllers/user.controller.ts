@@ -113,6 +113,7 @@ const getList = async (request: Request, res: Response) => {
             new Date(data?.created_date?.seconds * 1000) || undefined,
           updated_date:
             new Date(data?.updated_date?.seconds * 1000) || undefined,
+          last_login: new Date(data?.last_login?.seconds * 1000) || undefined,
         };
 
         newData = req.firebase.showValuesDocument(newData, [
@@ -127,6 +128,7 @@ const getList = async (request: Request, res: Response) => {
           "status",
           "created_date",
           "updated_date",
+          "last_login",
         ]);
         return newData;
       });

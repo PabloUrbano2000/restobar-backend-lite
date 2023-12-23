@@ -3,7 +3,8 @@ export const DOCUMENT_TYPE_DNI = "DNI";
 export enum ROLES {
   GLOBAL_ADMIN = "GLOBAL_ADMIN",
   ADMIN = "ADMIN",
-  SELLER = "SELLER",
+  CHEF = "CHEF",
+  WAITER = "WAITER",
 }
 
 export enum MODULES {

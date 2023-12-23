@@ -51,7 +51,7 @@ const getList = async (request: Request, res: Response) => {
   ][] = [];
 
   let startDateFormat = new Date(
-    formatDatetoYYYYMMDD(generateUTCToLimaDate(), "-")
+    formatDatetoYYYYMMDD(generateUTCToLimaDate(-1), "-")
   );
   let endDateFormat = new Date(
     formatDatetoYYYYMMDD(generateUTCToLimaDate(1), "-")

@@ -47,13 +47,13 @@ const insertMasterCollection = async (collection: string, dataList: any) => {
     [],
     { limit: 10 }
   );
-  if (currentData.length > 0) {
-    console.log(
-      `YA EXISTEN DOCUMENTOS EN LA COLECCIÓN ${collection}:`,
-      currentData.map((res) => res.id)
-    );
-    return;
-  }
+  // if (currentData.length > 0) {
+  //   console.log(
+  //     `YA EXISTEN DOCUMENTOS EN LA COLECCIÓN ${collection}:`,
+  //     currentData.map((res) => res.id)
+  //   );
+  //   return;
+  // }
   if (dataList.length > 0) {
     dataList.forEach((data: any) => {
       newArray.push(firebase.insertDocument(collection, data));
@@ -271,7 +271,12 @@ export const executeData = async () => {
     MODULES.RECEPTIONS,
     MODULES.USERS,
   ]);
-  await insertPermissionsInRoleCollection(ROLES.SELLER, [
+  await insertPermissionsInRoleCollection(ROLES.CHEF, [
+    MODULES.ORDERS,
+    MODULES.PRODUCTS,
+    MODULES.USERS,
+  ]);
+  await insertPermissionsInRoleCollection(ROLES.WAITER, [
     MODULES.ORDERS,
     MODULES.PRODUCTS,
     MODULES.USERS,

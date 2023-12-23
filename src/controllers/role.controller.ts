@@ -10,7 +10,7 @@ const getList = async (request: Request, res: Response) => {
     const result = await req.firebase.getDocumentsByFilter(
       ROLE_COLLECTION,
       [],
-      [["name", "asc"]]
+      [["alias", "asc"]]
     );
 
     if (result.docs.length > 0) {

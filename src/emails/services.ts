@@ -15,7 +15,9 @@ export const sendMail = async (infoMail: SendMailOptions, service: string) => {
         pass: `${config.SMTP_PASSWORD}`,
       },
     });
+
     await transporter.sendMail(infoMail);
+
     return {
       status_code: 200,
       message: "Correo enviado éxitosamente",

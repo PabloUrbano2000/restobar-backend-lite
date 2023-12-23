@@ -1,6 +1,5 @@
 import config from "../config";
 import { generateUTCToLimaDate } from "../helpers/generators";
-import { encryptPassword } from "../helpers/passwords";
 import { OPERATION_TYPE } from "../models/DocumentType";
 import {
   Setting,
@@ -66,8 +65,16 @@ export const modulesData: Module[] = [
 ];
 export const rolesData: Role[] = [
   {
-    name: ROLES.SELLER,
-    alias: "Vendedor(a)",
+    name: ROLES.CHEF,
+    alias: "Cocinero(a)",
+    permissions: [],
+    status: 1,
+    updated_date: generateUTCToLimaDate(),
+    created_date: generateUTCToLimaDate(),
+  },
+  {
+    name: ROLES.WAITER,
+    alias: "Mesero(a)",
     permissions: [],
     status: 1,
     updated_date: generateUTCToLimaDate(),

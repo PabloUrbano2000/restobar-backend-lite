@@ -44,37 +44,6 @@ const getList = async (request: Request, res: Response) => {
     );
 
     if (result.docs.length > 0) {
-      const categoriesId: string[] = [];
-      const categoriesData: Promise<any>[] = [];
-
-      for (let data of result.docs) {
-        if (data?.category?.id && !categoriesId.includes(data?.category?.id)) {
-          categoriesId.push(data?.category?.id);
-          categoriesData.push(req.firebase.getObjectByReference(data.category));
-        }
-      }
-
-      const categoriesResult = await Promise.all(categoriesData);
-
-      const filterData = result.docs.map((data) => {
-        if (data?.category?.id) {
-          const categoryId = data.category.id || undefined;
-          data.category = categoriesResult.find((cat) => cat.id == categoryId);
-
-          data.category = req.firebase.cleanValuesDocument(data.category, [
-            "status",
-          ]);
-        }
-
-        data.created_date = new Date(data.created_date?.seconds * 1000);
-        data.updated_date = new Date(data.updated_date?.seconds * 1000);
-        return data;
-      });
-
-      result.docs = filterData;
-    }
-
-    if (result.docs.length > 0) {
       const documentTypesId: string[] = [];
       const documentTypesData: Promise<any>[] = [];
 

@@ -81,7 +81,15 @@ const getList = async (request: Request, res: Response) => {
 
           data.document_type = req.firebase.cleanValuesDocument(
             data.document_type,
-            ["status", "regex", "created_date", "updated_date"]
+            [
+              "status",
+              "length",
+              "sequential",
+              "regex",
+              "operation",
+              "created_date",
+              "updated_date",
+            ]
           );
         }
 
@@ -159,7 +167,7 @@ const getUser = async (request: Request, res: Response) => {
       return res.status(401).json({
         status_code: 401,
         error_code: "USER_NOT_FOUND",
-        errors: ["Usuario no existente"],
+        errors: ["Cliente no existente"],
       });
     }
 
@@ -169,7 +177,15 @@ const getUser = async (request: Request, res: Response) => {
       );
       userFound.document_type = req.firebase.cleanValuesDocument(
         userFound.document_type,
-        ["created_date", "updated_date", "regex"]
+        [
+          "status",
+          "length",
+          "sequential",
+          "regex",
+          "operation",
+          "created_date",
+          "updated_date",
+        ]
       );
     }
 

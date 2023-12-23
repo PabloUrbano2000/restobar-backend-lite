@@ -14,6 +14,7 @@ import receptionRouter from "../routes/reception.routes";
 import clientRouter from "../routes/client.routes";
 import authRouter from "../routes/auth.routes";
 import systemUserRouter from "../routes/systemUser.routes";
+import userRouter from "../routes/user.routes";
 import roleRouter from "../routes/role.routes";
 import productRouter from "../routes/product.routes";
 import profileRouter from "../routes/profile.routes";
@@ -62,6 +63,7 @@ class Server {
     this.app.use("/api/admin/category", categoryRouter);
     this.app.use("/api/admin/reception", receptionRouter);
     this.app.use("/api/admin/system-user", systemUserRouter);
+    this.app.use("/api/admin/user", userRouter);
     this.app.use("/api/admin/role", roleRouter);
     this.app.use("/api/admin/product", productRouter);
     this.app.use("/api/admin/profile", profileRouter);

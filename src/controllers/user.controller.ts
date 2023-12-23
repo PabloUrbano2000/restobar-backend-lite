@@ -11,6 +11,8 @@ const getList = async (request: Request, res: Response) => {
     first_name = undefined,
     last_name = undefined,
     email = undefined,
+    limit = 100,
+    offset = 0,
   } = req.body;
 
   const filter: [
@@ -40,7 +42,8 @@ const getList = async (request: Request, res: Response) => {
       [
         ["first_name", "asc"],
         ["last_name", "asc"],
-      ]
+      ],
+      { limit, offset }
     );
 
     if (result.docs.length > 0) {

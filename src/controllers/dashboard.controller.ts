@@ -91,7 +91,6 @@ const serveReception = async (request: Request, res: Response) => {
     await req.firebase.updateDocumentById(RECEPTION_COLLECTION, id, {
       ...rest,
       requires_attention: 0,
-      status: 0,
       updated_date: generateUTCToLimaDate(),
     });
 

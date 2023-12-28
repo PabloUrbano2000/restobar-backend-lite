@@ -727,13 +727,14 @@ const createClientOrder = async (request: Request, res: Response) => {
 
     total = Number((subtotal * (1 + tax)).toFixed(2));
 
-    // actualizamos el valor de la mesa a no disponible
+    // actualizamos el valor de la mesa a no disponible y notificamos que requiere atencion
     const { id: receptionId, ...restRec } = receptionFound;
     await req.firebase.updateDocumentById(
       RECEPTION_COLLECTION,
       receptionFound.id || "",
       {
         ...restRec,
+        requires_attention: 1,
         available: 0,
       }
     );

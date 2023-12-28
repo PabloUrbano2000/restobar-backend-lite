@@ -5,6 +5,7 @@ export type Reception = {
   number_table?: string;
   code?: string;
   available?: Available;
+  requires_attention?: number;
   status?: Status;
   created_date?: Date | string;
   updated_date?: Date | string;

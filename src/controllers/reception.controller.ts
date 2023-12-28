@@ -158,6 +158,7 @@ const createReception = async (request: Request, res: Response) => {
     const result = await req.firebase.insertDocument(RECEPTION_COLLECTION, {
       number_table: number_table,
       code: code,
+      requires_attention: 0,
       status: 1,
       available: 1,
       ...attributes,

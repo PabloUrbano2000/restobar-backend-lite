@@ -10,12 +10,14 @@ import {
   changePassword,
   verifyAccessToken,
   logout,
+  register,
 } from "../controllers/systemAuth.controller";
 import {
   verifySysUserValidToken,
   verifySysUserAccessToken,
   verifySysUserRefreshToken,
 } from "../middlewares";
+import { namesRegex } from "../utilities/regex";
 
 const router = Router();
 
@@ -99,5 +101,68 @@ router.post(
 );
 
 router.post("/logout", [verifySysUserAccessToken], logout);
+
+router.post(
+  "/create",
+  [
+    body("first_name")
+      .notEmpty()
+      .withMessage("El nombre es obligatorio")
+      .isString()
+      .withMessage("El nombre debe ser una cadena")
+      .isLength({ min: 2, max: 50 })
+      .withMessage("El nombre debe tener entre 2 a 50 caracteres")
+      .custom((data: string) => {
+        if (data) {
+          if (!namesRegex.test(data.toString())) {
+            throw Error("Nombre con formato inválido");
+          }
+        }
+        return true;
+      }),
+    body("last_name")
+      .notEmpty()
+      .withMessage("El apellido paterno es obligatorio")
+      .isString()
+      .withMessage("El apellido paterno debe ser una cadena")
+      .isLength({ min: 2, max: 50 })
+      .withMessage("El apellido paterno debe tener entre 2 a 50 caracteres")
+      .custom((data: string) => {
+        if (data) {
+          if (!namesRegex.test(data.toString())) {
+            throw Error("Apellido paterno con formato inválido");
+          }
+        }
+        return true;
+      }),
+    body("email")
+      .notEmpty()
+      .withMessage("El correo electrónico es obligatorio")
+      .isEmail()
+      .withMessage("Correo electrónico con formato inválido"),
+    body("role")
+      .notEmpty()
+      .withMessage("El rol es obligatorio")
+      .isString()
+      .withMessage("El rol debe ser una cadena"),
+    body("status")
+      .optional()
+      .custom((data) => {
+        if (data && typeof data !== "number") {
+          throw Error("El estado debe ser un número");
+        }
+        return true;
+      })
+      .custom((data: string) => {
+        if (data) {
+          if (!new RegExp(/^(0|1)$/).test(data.toString())) {
+            throw Error("Estado con formato inválido");
+          }
+        }
+        return true;
+      }),
+  ],
+  register
+);
 
 export default router;

@@ -6,7 +6,7 @@ import { ErrorFormat } from "../interfaces/Error";
 import { SYSTEM_USER_COLLECTION, SystemUser } from "../models/SystemUser";
 
 import { validationResult } from "express-validator";
-import { generateUTCToLimaDate } from "../helpers/generators";
+import { generatePassword, generateUTCToLimaDate } from "../helpers/generators";
 import { comparePassword, encryptPassword } from "../helpers/passwords";
 import {
   templateEmailSystemRecoveryAccount,
@@ -14,7 +14,10 @@ import {
   templateEmailSystemRecoveryPassword,
   templateEmailSystemChangePassword,
   sendMail,
+  templateEmailSystemWelcome,
 } from "../emails";
+import { ROLE_COLLECTION } from "../models/Role";
+import { SETTING_COLLECTION, Setting } from "../models/Setting";
 
 const login = async (request: Request, res: Response) => {
   const req = request as RequestServer;
@@ -762,6 +765,184 @@ const logout = async (request: Request, res: Response) => {
   }
 };
 
+const register = async (request: Request, res: Response) => {
+  const req = request as RequestServer;
+  let errors: ErrorFormat[] = [];
+  const resultValidator = validationResult(req);
+
+  if (!resultValidator.isEmpty()) {
+    errors = resultValidator.array().map((data) => data.msg);
+
+    return res.status(400).json({
+      status_code: 400,
+      error_code: "INVALID_BODY_FIELDS",
+      errors,
+    });
+  }
+
+  try {
+    const {
+      first_name = "",
+      last_name = "",
+      email = "",
+      role = "",
+      status = undefined,
+    } = req.body;
+
+    const isExistUserByEmail = await req.firebase.getOneDocument(
+      SYSTEM_USER_COLLECTION,
+      [["email", "==", email?.toLowerCase()]]
+    );
+
+    if (isExistUserByEmail) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "USER_EXIST",
+        errors: ["El usuario ya se encuentra registrado"],
+      });
+    }
+
+    const roleObject = await req.firebase.getDocumentById(
+      ROLE_COLLECTION,
+      role
+    );
+
+    if (!roleObject) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "ROLE_NOT_FOUND",
+        errors: ["Rol no existente"],
+      });
+    }
+
+    const roleInstance = req.firebase.instanceReferenceById(
+      ROLE_COLLECTION,
+      roleObject.id
+    );
+
+    const settingFound: Setting | null = await req.firebase.getOneDocument(
+      SETTING_COLLECTION,
+      [["status", "==", 1]]
+    );
+
+    if (!settingFound) {
+      return res.status(401).json({
+        status_code: 401,
+        error_code: "SETTING_NOT_FOUND",
+        errors: ["No existe un archivo de configuración activo"],
+      });
+    }
+
+    const password = generatePassword(8);
+
+    const hash = await encryptPassword(password);
+
+    let enableVerify = 0;
+
+    if (settingFound.system_user_double_opt_in === 1) {
+      enableVerify = 1;
+    }
+
+    let dataAux: any = {};
+
+    if (typeof status === "number") {
+      dataAux.status = status;
+    }
+
+    const result = await req.firebase.insertDocument(SYSTEM_USER_COLLECTION, {
+      first_name: first_name.trim(),
+      last_name: last_name.trim(),
+      second_last_name: "",
+      email: email.toLowerCase().trim(),
+      password: hash,
+      photo: "",
+      status: 1,
+      verified: enableVerify === 1 ? 0 : 1,
+      access_token: "",
+      refresh_token: "",
+      validation_token: "",
+      role: roleInstance,
+      ...dataAux,
+      created_date: generateUTCToLimaDate(),
+    });
+
+    const userFound = await req.firebase.getDocumentById(
+      SYSTEM_USER_COLLECTION,
+      result.id
+    );
+
+    const token = jwt.sign(
+      { id: result.id },
+      config.JWT_SYS_VALIDATION_SECRET,
+      {
+        expiresIn: "15min",
+      }
+    );
+
+    const { id: userId, ...rest } = userFound;
+
+    // si la cuenta requiere verificación actualizamos el usuario con su token de verificación
+    if (enableVerify === 1) {
+      await req.firebase.updateDocumentById(SYSTEM_USER_COLLECTION, result.id, {
+        ...rest,
+        validation_token: token,
+      });
+    }
+
+    const link = `${config.HOST_ADMIN}/auth/verify/?token=${token}`;
+
+    const template = templateEmailSystemWelcome({
+      email: email.toLowerCase().trim(),
+      firstName: first_name.trim(),
+      lastName: last_name.trim(),
+      link,
+      password,
+      isValidationEnable: enableVerify === 1 ? true : false,
+    });
+
+    const resEmail = await sendMail(template, "system-user create-system-user");
+
+    if (resEmail.status_code !== 200) {
+      return res.status(resEmail.status_code).json({
+        ...result,
+      });
+    }
+
+    userFound.last_login = new Date(userFound.last_login?.seconds * 1000);
+    userFound.created_date = new Date(userFound.created_date?.seconds * 1000);
+    userFound.updated_date = new Date(userFound.updated_date?.seconds * 1000);
+
+    userFound.role = await req.firebase.getObjectByReference(userFound.role);
+    userFound.role = req.firebase.cleanValuesDocument(userFound.role, [
+      "created_date",
+      "updated_date",
+      "permissions",
+    ]);
+
+    const cleanUser = req.firebase.cleanValuesDocument(userFound, [
+      "account_suspension_day",
+      "password",
+      "access_token",
+      "refresh_token",
+      "validation_token",
+    ]);
+
+    return res.status(200).json({
+      status_code: 200,
+      data: {
+        user: cleanUser,
+      },
+      message: "Usuario registrado éxitosamente",
+      errors: [],
+    });
+  } catch (error) {
+    console.log("system-user register response - error", error);
+    return res
+      .status(500)
+      .json({ status_code: 500, errors: ["Ocurrió un error desconocido"] });
+  }
+};
+
 export {
   login,
   renewToken,
@@ -772,4 +953,5 @@ export {
   verifyPassword,
   changePassword,
   logout,
+  register,
 };

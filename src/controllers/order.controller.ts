@@ -1131,8 +1131,8 @@ const getClientOrder = async (request: Request, res: Response) => {
       req.firebase.cleanValuesDocument(item, ["order"])
     );
 
-    const productsData = orderFound.items.map((prod: any) =>
-      req.firebase.getObjectByReference(prod.product)
+    const productsData = orderFound.items.map((item: any) =>
+      req.firebase.getDocumentById(PRODUCT_COLLECTION, item.product.id)
     );
 
     const productsResult = await Promise.all(productsData);
@@ -1145,6 +1145,7 @@ const getClientOrder = async (request: Request, res: Response) => {
       newData.product = req.firebase.showValuesDocument(newData.product, [
         "id",
         "name",
+        "price",
         "image",
       ]);
       return newData;

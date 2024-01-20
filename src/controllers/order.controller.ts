@@ -1145,6 +1145,7 @@ const getClientOrder = async (request: Request, res: Response) => {
       newData.product = req.firebase.showValuesDocument(newData.product, [
         "id",
         "name",
+        "image",
       ]);
       return newData;
     });
